@@ -295,16 +295,33 @@ app.post('/api/promo/envoyer', express.json(), (req, res) => {
 // ────────────────────────────────────────────────────────────
 //  Fichiers HTML statiques (applications WashCRM)
 // ────────────────────────────────────────────────────────────
-app.use(express.static(path.join(__dirname)));
+const fs2 = require('fs');
 
 app.get('/', (req, res) => {
-  res.sendFile(path.join(__dirname, 'APP-GERANT-FINAL.html'));
+  const filePath = path.join(__dirname, 'APP-GERANT-FINAL.html');
+  if (fs2.existsSync(filePath)) {
+    res.sendFile(filePath);
+  } else {
+    res.send('<h1>WashCRM</h1><p>Fichier non trouvé. Vérifiez le déploiement.</p>');
+  }
 });
+
 app.get('/gerant', (req, res) => {
-  res.sendFile(path.join(__dirname, 'APP-GERANT-FINAL.html'));
+  const filePath = path.join(__dirname, 'APP-GERANT-FINAL.html');
+  if (fs2.existsSync(filePath)) {
+    res.sendFile(filePath);
+  } else {
+    res.send('<h1>APP-GERANT-FINAL.html non trouvé</h1><p>Fichiers présents : ' + fs2.readdirSync(__dirname).join(', ') + '</p>');
+  }
 });
+
 app.get('/client', (req, res) => {
-  res.sendFile(path.join(__dirname, 'APP-CLIENT-FINAL.html'));
+  const filePath = path.join(__dirname, 'APP-CLIENT-FINAL.html');
+  if (fs2.existsSync(filePath)) {
+    res.sendFile(filePath);
+  } else {
+    res.send('<h1>APP-CLIENT-FINAL.html non trouvé</h1><p>Fichiers présents : ' + fs2.readdirSync(__dirname).join(', ') + '</p>');
+  }
 });
 
 
