@@ -1,0 +1,997 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#1a56db">
+<title>WashCRM Gérant · Lavage Auto des Vérités</title>
+<link href="https://fonts.googleapis.com/css2?family=Clash+Display:wght@400;500;600;700&family=Cabinet+Grotesk:wght@300;400;500;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<style>
+:root{
+  --brand:#1a56db;--brand-dark:#0f3a9e;--brand-light:#e8f0fe;
+  --gold:#f59e0b;--bg:#f8f7f5;--white:#fff;
+  --text:#111827;--muted:#6b7280;--border:#e5e7eb;
+  --green:#16a34a;--green-light:#f0fdf4;
+  --red:#dc2626;--red-light:#fef2f2;
+  --radius:20px;--radius-sm:12px;
+  --shadow:0 2px 12px rgba(0,0,0,0.07);--shadow-lg:0 12px 40px rgba(0,0,0,0.14);
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Cabinet Grotesk',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;max-width:430px;margin:0 auto;overflow-x:hidden}
+.screen{display:none;min-height:100vh;flex-direction:column;animation:fadeIn 0.25s ease}
+.screen.active{display:flex}
+@keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+.bottom-nav{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:430px;background:white;border-top:1px solid var(--border);display:flex;padding:8px 0 20px;box-shadow:0 -4px 20px rgba(0,0,0,0.08);z-index:100}
+.nav-tab{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;padding:6px 0;cursor:pointer;border:none;background:transparent;font-family:'Cabinet Grotesk',sans-serif}
+.nav-tab-icon{font-size:20px}
+.nav-tab-label{font-size:9px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.5px}
+.nav-tab.active .nav-tab-label{color:var(--brand)}
+.screen-header{background:white;padding:52px 20px 16px;border-bottom:1px solid var(--border);position:sticky;top:0;z-index:10}
+.screen-header-title{font-family:'Clash Display',sans-serif;font-size:22px;font-weight:700}
+.screen-header-sub{font-size:12px;color:var(--muted);margin-top:2px}
+.screen-body{padding:20px;padding-bottom:90px}
+.back-btn{font-size:13px;color:var(--brand);background:none;border:none;font-family:'Cabinet Grotesk',sans-serif;cursor:pointer;margin-bottom:8px;padding:0;display:flex;align-items:center;gap:4px}
+.card{background:white;border-radius:var(--radius);border:1px solid var(--border);overflow:hidden;box-shadow:var(--shadow);margin-bottom:14px}
+.card-head{display:flex;align-items:center;justify-content:space-between;padding:14px 18px;border-bottom:1px solid var(--border)}
+.card-title{font-family:'Clash Display',sans-serif;font-size:15px;font-weight:600}
+.card-body{padding:16px 18px}
+.kpi-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px}
+.kpi-card{background:white;border-radius:var(--radius-sm);padding:14px;border:1px solid var(--border);box-shadow:var(--shadow);position:relative;overflow:hidden}
+.kpi-card::before{content:'';position:absolute;top:0;left:0;right:0;height:3px}
+.kpi-card.blue::before{background:var(--brand)}
+.kpi-card.green::before{background:var(--green)}
+.kpi-card.gold::before{background:var(--gold)}
+.kpi-card.red::before{background:var(--red)}
+.kpi-icon{font-size:18px;margin-bottom:4px}
+.kpi-val{font-family:'Clash Display',sans-serif;font-size:24px;font-weight:700;line-height:1;margin-bottom:2px}
+.kpi-label{font-size:11px;color:var(--muted)}
+.dash-hero{background:linear-gradient(135deg,var(--brand),var(--brand-dark));padding:52px 20px 20px;color:white}
+.dash-hero-title{font-family:'Clash Display',sans-serif;font-size:22px;font-weight:700}
+.dash-hero-sub{font-size:13px;color:rgba(255,255,255,0.7);margin-top:2px;margin-bottom:16px}
+.dash-stats{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.ds{background:rgba(255,255,255,0.12);border-radius:var(--radius-sm);padding:12px;border:1px solid rgba(255,255,255,0.15)}
+.ds-val{font-family:'Clash Display',sans-serif;font-size:22px;font-weight:700;color:white}
+.ds-label{font-size:11px;color:rgba(255,255,255,0.7);margin-top:2px}
+.quick-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px}
+.quick-card{background:white;border-radius:var(--radius-sm);padding:14px;box-shadow:var(--shadow);cursor:pointer;border:1.5px solid var(--border);transition:all 0.2s}
+.quick-card:active{border-color:var(--brand);transform:scale(0.98)}
+.q-icon{font-size:22px;margin-bottom:6px}
+.q-label{font-size:13px;font-weight:700}
+.q-sub{font-size:11px;color:var(--muted);margin-top:2px}
+.list-row{display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid var(--border)}
+.list-row:last-child{border-bottom:none}
+.list-ico{width:38px;height:38px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0}
+.badge{display:inline-flex;align-items:center;padding:2px 8px;border-radius:20px;font-size:11px;font-weight:600}
+.badge-green{background:var(--green-light);color:var(--green)}
+.badge-gold{background:#fef3c7;color:#92400e}
+.badge-blue{background:var(--brand-light);color:var(--brand)}
+.badge-muted{background:var(--bg);color:var(--muted);border:1px solid var(--border)}
+.badge-red{background:var(--red-light);color:var(--red)}
+.form-group{display:flex;flex-direction:column;gap:5px;margin-bottom:12px}
+.form-label{font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.8px}
+.form-input,.form-select,.form-ta{width:100%;padding:11px 14px;border:2px solid var(--border);border-radius:var(--radius-sm);font-family:'Cabinet Grotesk',sans-serif;font-size:14px;color:var(--text);background:var(--bg);outline:none;transition:border-color 0.2s}
+.form-input:focus,.form-select:focus,.form-ta:focus{border-color:var(--brand);background:white}
+.form-ta{resize:none;min-height:72px}
+.btn{padding:13px;border-radius:var(--radius-sm);font-family:'Cabinet Grotesk',sans-serif;font-size:14px;font-weight:700;cursor:pointer;border:none;display:inline-flex;align-items:center;justify-content:center;gap:6px;transition:all 0.15s}
+.btn-brand{background:var(--brand);color:white;width:100%;box-shadow:0 4px 16px rgba(26,86,219,0.3)}
+.btn-sm{padding:7px 14px;font-size:12px}
+.btn-outline{background:transparent;color:var(--brand);border:1.5px solid var(--brand)}
+.btn-ghost{background:var(--bg);color:var(--muted);border:1px solid var(--border)}
+.btn-green{background:var(--green);color:white}
+.btn-red{background:var(--red);color:white}
+.panne-card{background:white;border-radius:var(--radius-sm);border:1px solid var(--border);padding:14px;margin-bottom:10px;box-shadow:var(--shadow);border-left:4px solid var(--border)}
+.panne-card.new{border-left-color:var(--red)}
+.panne-card.progress{border-left-color:var(--gold)}
+.panne-card.resolved{border-left-color:var(--green);opacity:0.7}
+.drop-zone{border:2px dashed var(--border);border-radius:var(--radius);padding:28px 20px;text-align:center;cursor:pointer;transition:all 0.2s;background:white;position:relative;margin-bottom:14px}
+.drop-zone.drag,.drop-zone:hover{border-color:var(--brand);background:var(--brand-light)}
+.drop-input{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%}
+.pct-badge{display:inline-block;padding:2px 8px;border-radius:20px;font-size:11px;font-weight:700}
+.pct-3{background:#fef3c7;color:#92400e}.pct-4{background:#fed7aa;color:#9a3412}
+.pct-5{background:var(--green-light);color:var(--green)}.pct-7{background:var(--brand-light);color:var(--brand)}
+.pct-8{background:#f3e8ff;color:#7c3aed}.pct-10{background:var(--red-light);color:var(--red)}
+.chip-row{display:flex;gap:8px;overflow-x:auto;padding-bottom:4px;margin-bottom:12px;-webkit-overflow-scrolling:touch}
+.chip-row::-webkit-scrollbar{display:none}
+.chip{padding:6px 14px;border-radius:20px;border:1.5px solid var(--border);background:white;color:var(--muted);font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap;font-family:'Cabinet Grotesk',sans-serif;flex-shrink:0}
+.chip.active{background:var(--brand);color:white;border-color:var(--brand)}
+.search-wrap{display:flex;align-items:center;gap:8px;background:white;border-radius:var(--radius-sm);padding:10px 14px;border:1.5px solid var(--border);margin-bottom:12px}
+.search-wrap input{border:none;background:transparent;outline:none;font-family:'Cabinet Grotesk',sans-serif;font-size:14px;color:var(--text);width:100%}
+.client-av{width:40px;height:40px;border-radius:50%;color:white;display:flex;align-items:center;justify-content:center;font-family:'Clash Display',sans-serif;font-size:14px;font-weight:700;flex-shrink:0}
+.import-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch}
+.import-table{width:100%;border-collapse:collapse;font-size:12px;min-width:540px}
+.import-table th{text-align:left;padding:8px 10px;background:var(--bg);color:var(--muted);font-size:10px;text-transform:uppercase;letter-spacing:0.8px;border-bottom:1px solid var(--border)}
+.import-table td{padding:9px 10px;border-bottom:1px solid var(--border)}
+.import-table tr:last-child td{border-bottom:none}
+.toggle-row{display:flex;align-items:center;justify-content:space-between;padding:12px 0;border-bottom:1px solid var(--border)}
+.toggle-row:last-child{border-bottom:none}
+.toggle{width:42px;height:24px;border-radius:12px;background:var(--border);position:relative;cursor:pointer;transition:background 0.2s;flex-shrink:0}
+.toggle.on{background:var(--green)}
+.toggle::after{content:'';position:absolute;top:3px;left:3px;width:18px;height:18px;border-radius:50%;background:white;transition:transform 0.2s;box-shadow:0 1px 3px rgba(0,0,0,0.2)}
+.toggle.on::after{transform:translateX(18px)}
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:200;align-items:flex-end;justify-content:center;backdrop-filter:blur(4px)}
+.modal-overlay.open{display:flex}
+.modal{background:white;border-radius:24px 24px 0 0;width:100%;max-width:430px;max-height:92vh;overflow-y:auto;padding:20px 20px 40px;animation:slideUp 0.3s ease}
+@keyframes slideUp{from{transform:translateY(100%)}to{transform:translateY(0)}}
+.modal-drag{width:40px;height:4px;background:var(--border);border-radius:2px;margin:0 auto 18px}
+.modal-title{font-family:'Clash Display',sans-serif;font-size:19px;font-weight:700;margin-bottom:4px}
+.modal-sub{font-size:13px;color:var(--muted);margin-bottom:16px}
+.rappel-chip{padding:5px 12px;border-radius:20px;border:1.5px solid var(--border);background:white;color:var(--muted);font-family:'Cabinet Grotesk',sans-serif;font-size:12px;font-weight:600;cursor:pointer}
+.rappel-chip.active{background:var(--brand);color:white;border-color:var(--brand)}
+.achat-row{display:flex;align-items:center;gap:10px;padding:11px 14px;background:white;border-radius:var(--radius-sm);border:1px solid var(--border);margin-bottom:8px}
+.achat-check{width:22px;height:22px;border-radius:5px;border:2px solid var(--border);display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;font-size:11px;color:white;font-weight:700}
+.achat-check.checked{background:var(--green);border-color:var(--green)}
+.bareme-mini{font-size:12px}
+.bareme-mini tr{border-bottom:1px solid var(--border)}
+.bareme-mini tr:last-child{border-bottom:none}
+.bareme-mini td{padding:6px 4px}
+.toast{position:fixed;bottom:100px;left:50%;transform:translateX(-50%) translateY(20px);background:var(--text);color:white;padding:12px 20px;border-radius:40px;font-size:14px;font-weight:500;white-space:nowrap;box-shadow:var(--shadow-lg);opacity:0;transition:all 0.3s cubic-bezier(0.34,1.56,0.64,1);z-index:999;max-width:90%;text-align:center}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+</style>
+</head>
+<body>
+
+<!-- ═══ DASHBOARD ═══ -->
+<div class="screen active" id="screen-dashboard">
+  <div class="dash-hero">
+    <div class="dash-hero-title">Bonjour Adrien 👋</div>
+    <div class="dash-hero-sub">Lavage Auto des Vérités · Lapalisse</div>
+    <div class="dash-stats">
+      <div class="ds"><div class="ds-val" id="kpi-ca">—</div><div class="ds-label">CA ce mois</div></div>
+      <div class="ds"><div class="ds-val" id="kpi-tx">—</div><div class="ds-label">Transactions</div></div>
+      <div class="ds"><div class="ds-val" id="kpi-clients">—</div><div class="ds-label">Clients</div></div>
+      <div class="ds"><div class="ds-val" id="kpi-cash">—</div><div class="ds-label">Cashback distribué</div></div>
+    </div>
+  </div>
+  <div class="screen-body">
+    <div class="quick-grid">
+      <div class="quick-card" onclick="goTo('screen-clients')"><div class="q-icon">👥</div><div class="q-label">Clients</div><div class="q-sub" id="q-clients">Chargement…</div></div>
+      <div class="quick-card" onclick="goTo('screen-pannes')"><div class="q-icon">🚨</div><div class="q-label">Pannes</div><div class="q-sub" id="q-pannes">Chargement…</div></div>
+      <div class="quick-card" onclick="goTo('screen-import')"><div class="q-icon">📥</div><div class="q-label">Import</div><div class="q-sub">Lavaccess Excel</div></div>
+      <div class="quick-card" onclick="goTo('screen-entretien')"><div class="q-icon">🔧</div><div class="q-label">Entretien</div><div class="q-sub" id="q-entretien">3 alertes</div></div>
+    </div>
+    <div class="card">
+      <div class="card-head"><div class="card-title">Derniers passages</div><span onclick="goTo('screen-clients')" style="font-size:13px;color:var(--brand);cursor:pointer">Voir tout ›</span></div>
+      <div style="padding:0 18px" id="dash-last-tx"><div style="padding:20px 0;text-align:center;color:var(--muted);font-size:13px">Chargement…</div></div>
+    </div>
+  </div>
+  <nav class="bottom-nav">
+    <button class="nav-tab active" onclick="nav('dashboard',this)"><div class="nav-tab-icon">📊</div><div class="nav-tab-label">Dashboard</div></button>
+    <button class="nav-tab" onclick="nav('clients',this)"><div class="nav-tab-icon">👥</div><div class="nav-tab-label">Clients</div></button>
+    <button class="nav-tab" onclick="nav('pannes',this)"><div class="nav-tab-icon">🚨</div><div class="nav-tab-label">Pannes</div></button>
+    <button class="nav-tab" onclick="nav('import',this)"><div class="nav-tab-icon">📥</div><div class="nav-tab-label">Import</div></button>
+    <button class="nav-tab" onclick="nav('plus',this)"><div class="nav-tab-icon">☰</div><div class="nav-tab-label">Plus</div></button>
+  </nav>
+</div>
+
+<!-- ═══ CLIENTS ═══ -->
+<div class="screen" id="screen-clients">
+  <div class="screen-header"><div class="screen-header-title">👥 Clients</div><div class="screen-header-sub" id="clients-sub">Chargement…</div></div>
+  <div class="screen-body">
+    <div class="kpi-grid">
+      <div class="kpi-card blue"><div class="kpi-icon">👥</div><div class="kpi-val" id="nb-clients">—</div><div class="kpi-label">Inscrits</div></div>
+      <div class="kpi-card gold"><div class="kpi-icon">💶</div><div class="kpi-val" id="total-cb">—</div><div class="kpi-label">Cashback en cours</div></div>
+    </div>
+    <div class="chip-row">
+      <div class="chip active" onclick="filterC('all',this)">Tous</div>
+      <div class="chip" onclick="filterC('gold',this)">✦ Gold</div>
+      <div class="chip" onclick="filterC('silver',this)">Silver</div>
+      <div class="chip" onclick="filterC('bronze',this)">Bronze</div>
+      <div class="chip" onclick="filterC('inactive',this)">Inactifs</div>
+    </div>
+    <div class="search-wrap"><span>🔍</span><input type="text" placeholder="Rechercher…" oninput="searchC(this.value)"></div>
+    <div class="card"><div style="padding:0 18px" id="clients-list"><div style="padding:20px;text-align:center;color:var(--muted)">Chargement…</div></div></div>
+    <button class="btn btn-outline" style="width:100%" onclick="exportClients()">⬇ Exporter CSV</button>
+  </div>
+  <nav class="bottom-nav">
+    <button class="nav-tab" onclick="nav('dashboard',this)"><div class="nav-tab-icon">📊</div><div class="nav-tab-label">Dashboard</div></button>
+    <button class="nav-tab active" onclick="nav('clients',this)"><div class="nav-tab-icon">👥</div><div class="nav-tab-label">Clients</div></button>
+    <button class="nav-tab" onclick="nav('pannes',this)"><div class="nav-tab-icon">🚨</div><div class="nav-tab-label">Pannes</div></button>
+    <button class="nav-tab" onclick="nav('import',this)"><div class="nav-tab-icon">📥</div><div class="nav-tab-label">Import</div></button>
+    <button class="nav-tab" onclick="nav('plus',this)"><div class="nav-tab-icon">☰</div><div class="nav-tab-label">Plus</div></button>
+  </nav>
+</div>
+
+<!-- ═══ PANNES ═══ -->
+<div class="screen" id="screen-pannes">
+  <div class="screen-header"><div class="screen-header-title">🚨 Pannes & Incidents</div></div>
+  <div class="screen-body">
+    <div class="kpi-grid">
+      <div class="kpi-card red"><div class="kpi-val" id="nb-new">—</div><div class="kpi-label">🔴 Nouvelles</div></div>
+      <div class="kpi-card gold"><div class="kpi-val" id="nb-prog">—</div><div class="kpi-label">🟠 En cours</div></div>
+    </div>
+    <div class="chip-row">
+      <div class="chip active" onclick="filterP('all',this)">Toutes</div>
+      <div class="chip" onclick="filterP('new',this)">🔴 Nouvelles</div>
+      <div class="chip" onclick="filterP('progress',this)">🟠 En cours</div>
+      <div class="chip" onclick="filterP('resolved',this)">🟢 Résolues</div>
+    </div>
+    <div id="pannes-list"></div>
+  </div>
+  <nav class="bottom-nav">
+    <button class="nav-tab" onclick="nav('dashboard',this)"><div class="nav-tab-icon">📊</div><div class="nav-tab-label">Dashboard</div></button>
+    <button class="nav-tab" onclick="nav('clients',this)"><div class="nav-tab-icon">👥</div><div class="nav-tab-label">Clients</div></button>
+    <button class="nav-tab active" onclick="nav('pannes',this)"><div class="nav-tab-icon">🚨</div><div class="nav-tab-label">Pannes</div></button>
+    <button class="nav-tab" onclick="nav('import',this)"><div class="nav-tab-icon">📥</div><div class="nav-tab-label">Import</div></button>
+    <button class="nav-tab" onclick="nav('plus',this)"><div class="nav-tab-icon">☰</div><div class="nav-tab-label">Plus</div></button>
+  </nav>
+</div>
+
+<!-- ═══ IMPORT ═══ -->
+<div class="screen" id="screen-import">
+  <div class="screen-header"><div class="screen-header-title">📥 Import Lavaccess</div></div>
+  <div class="screen-body">
+    <div class="card">
+      <div class="card-head"><div class="card-title">Barème cashback</div></div>
+      <div class="card-body" style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+        <div><div style="font-size:12px;font-weight:700;color:var(--muted);margin-bottom:8px">🚗 Portique</div>
+          <table class="bareme-mini" style="width:100%;border-collapse:collapse">
+            <tr><td>ECO 6€</td><td><span class="pct-badge pct-3">3%</span></td></tr>
+            <tr><td>CONFORT 8€</td><td><span class="pct-badge pct-4">4%</span></td></tr>
+            <tr><td>EXTRA 12€</td><td><span class="pct-badge pct-5">5%</span></td></tr>
+            <tr><td>LUXE 16€</td><td><span class="pct-badge pct-7">7%</span></td></tr>
+            <tr><td>ULTRA 20€</td><td><span class="pct-badge pct-10">10%</span></td></tr>
+          </table>
+        </div>
+        <div><div style="font-size:12px;font-weight:700;color:var(--muted);margin-bottom:8px">🪙 DJ3</div>
+          <table class="bareme-mini" style="width:100%;border-collapse:collapse">
+            <tr><td>2€</td><td><span class="pct-badge pct-3">3%</span></td></tr>
+            <tr><td>10€</td><td><span class="pct-badge pct-5">5%</span></td></tr>
+            <tr><td>20€</td><td><span class="pct-badge pct-8">8%</span></td></tr>
+            <tr><td>30€</td><td><span class="pct-badge pct-8">8%</span></td></tr>
+            <tr><td>50€</td><td><span class="pct-badge pct-10">10%</span></td></tr>
+          </table>
+        </div>
+      </div>
+    </div>
+    <div class="drop-zone" id="drop-zone">
+      <input type="file" class="drop-input" id="file-input" accept=".xlsx,.xls">
+      <div style="font-size:32px;margin-bottom:10px">📊</div>
+      <div style="font-family:'Clash Display',sans-serif;font-size:16px;font-weight:700;margin-bottom:6px">Glissez votre export Lavaccess</div>
+      <div style="font-size:13px;color:var(--muted);margin-bottom:14px">Format Excel (.xlsx) · Journal Complet</div>
+      <button class="btn btn-brand" style="max-width:200px;margin:0 auto;padding:11px" onclick="document.getElementById('file-input').click();event.stopPropagation()">📂 Choisir le fichier</button>
+    </div>
+    <div id="import-results" style="display:none">
+      <div class="kpi-grid">
+        <div class="kpi-card green"><div class="kpi-val" id="imp-total">0</div><div class="kpi-label">Transactions</div></div>
+        <div class="kpi-card blue"><div class="kpi-val" id="imp-ca">0€</div><div class="kpi-label">CA traité</div></div>
+        <div class="kpi-card gold"><div class="kpi-val" id="imp-cash">0€</div><div class="kpi-label">Cashback crédité</div></div>
+        <div class="kpi-card red"><div class="kpi-val" id="imp-ignored">0</div><div class="kpi-label">Ignorées</div></div>
+      </div>
+      <div class="card">
+        <div class="card-head"><div class="card-title">Transactions</div>
+          <div style="display:flex;gap:6px">
+            <button class="btn btn-ghost btn-sm" onclick="exportCSV()">⬇ CSV</button>
+            <button class="btn btn-outline btn-sm" onclick="resetImport()">🔄 Reset</button>
+          </div>
+        </div>
+        <div class="import-wrap"><table class="import-table">
+          <thead><tr><th>Date</th><th>Programme</th><th>Paiement</th><th>Montant</th><th>Cashback</th><th>Client</th></tr></thead>
+          <tbody id="import-tbody"></tbody>
+        </table></div>
+      </div>
+    </div>
+  </div>
+  <nav class="bottom-nav">
+    <button class="nav-tab" onclick="nav('dashboard',this)"><div class="nav-tab-icon">📊</div><div class="nav-tab-label">Dashboard</div></button>
+    <button class="nav-tab" onclick="nav('clients',this)"><div class="nav-tab-icon">👥</div><div class="nav-tab-label">Clients</div></button>
+    <button class="nav-tab" onclick="nav('pannes',this)"><div class="nav-tab-icon">🚨</div><div class="nav-tab-label">Pannes</div></button>
+    <button class="nav-tab active" onclick="nav('import',this)"><div class="nav-tab-icon">📥</div><div class="nav-tab-label">Import</div></button>
+    <button class="nav-tab" onclick="nav('plus',this)"><div class="nav-tab-icon">☰</div><div class="nav-tab-label">Plus</div></button>
+  </nav>
+</div>
+
+<!-- ═══ PLUS ═══ -->
+<div class="screen" id="screen-plus">
+  <div class="screen-header"><div class="screen-header-title">Menu</div></div>
+  <div class="screen-body">
+    <div class="card"><div style="padding:0 18px">
+      <div class="list-row" onclick="goTo('screen-entretien')"><div class="list-ico" style="background:#f0fdf4">🔧</div><div style="flex:1"><div style="font-size:14px;font-weight:500">Carnet d'entretien</div><div style="font-size:12px;color:var(--muted)">Suivi des interventions</div></div><span style="color:var(--muted)">›</span></div>
+      <div class="list-row" onclick="goTo('screen-achats')"><div class="list-ico" style="background:#fef3c7">🛒</div><div style="flex:1"><div style="font-size:14px;font-weight:500">Liste d'achats</div><div style="font-size:12px;color:var(--muted)">Articles à commander</div></div><span style="color:var(--muted)">›</span></div>
+      <div class="list-row" onclick="goTo('screen-promos')"><div class="list-ico" style="background:var(--brand-light)">🎟️</div><div style="flex:1"><div style="font-size:14px;font-weight:500">Codes promo</div><div style="font-size:12px;color:var(--muted)">Gérer les campagnes</div></div><span style="color:var(--muted)">›</span></div>
+      <div class="list-row" onclick="goTo('screen-avis')"><div class="list-ico" style="background:#fef3c7">⭐</div><div style="flex:1"><div style="font-size:14px;font-weight:500">Avis Google</div><div style="font-size:12px;color:var(--muted)">Configuration SMS</div></div><span style="color:var(--muted)">›</span></div>
+      <div class="list-row" onclick="goTo('screen-qrcodes')"><div class="list-ico" style="background:var(--brand-light)">📱</div><div style="flex:1"><div style="font-size:14px;font-weight:500">QR Codes bornes</div><div style="font-size:12px;color:var(--muted)">Portique & DJ3</div></div><span style="color:var(--muted)">›</span></div>
+    </div></div>
+    <div style="padding:18px;background:linear-gradient(135deg,var(--brand),var(--brand-dark));border-radius:var(--radius);color:white;text-align:center">
+      <div style="font-family:'Clash Display',sans-serif;font-size:16px;font-weight:700">WashCRM Gérant</div>
+      <div style="font-size:12px;opacity:0.7;margin-top:4px">Lavage Auto des Vérités · Lapalisse</div>
+      <div style="font-size:11px;opacity:0.5;margin-top:2px">SIRET 880 897 863 00028</div>
+    </div>
+  </div>
+  <nav class="bottom-nav">
+    <button class="nav-tab" onclick="nav('dashboard',this)"><div class="nav-tab-icon">📊</div><div class="nav-tab-label">Dashboard</div></button>
+    <button class="nav-tab" onclick="nav('clients',this)"><div class="nav-tab-icon">👥</div><div class="nav-tab-label">Clients</div></button>
+    <button class="nav-tab" onclick="nav('pannes',this)"><div class="nav-tab-icon">🚨</div><div class="nav-tab-label">Pannes</div></button>
+    <button class="nav-tab" onclick="nav('import',this)"><div class="nav-tab-icon">📥</div><div class="nav-tab-label">Import</div></button>
+    <button class="nav-tab active" onclick="nav('plus',this)"><div class="nav-tab-icon">☰</div><div class="nav-tab-label">Plus</div></button>
+  </nav>
+</div>
+
+<!-- ═══ ENTRETIEN ═══ -->
+<div class="screen" id="screen-entretien">
+  <div class="screen-header"><button class="back-btn" onclick="goTo('screen-plus')">← Retour</button><div class="screen-header-title">🔧 Carnet d'entretien</div></div>
+  <div class="screen-body">
+    <div class="kpi-grid">
+      <div class="kpi-card green"><div class="kpi-val" id="ent-ok">—</div><div class="kpi-label">✅ Interventions</div></div>
+      <div class="kpi-card red"><div class="kpi-val">3</div><div class="kpi-label">⚠️ Alertes</div></div>
+    </div>
+    <div class="card"><div class="card-head"><div class="card-title">Alertes</div><button class="btn btn-outline btn-sm" onclick="openMod('modal-intervention')">+ Nouvelle</button></div><div style="padding:0 18px" id="ent-alertes"></div></div>
+    <div class="card"><div class="card-head"><div class="card-title">Historique</div></div><div style="padding:0 18px" id="ent-recent"></div></div>
+  </div>
+  <nav class="bottom-nav">
+    <button class="nav-tab" onclick="nav('dashboard',this)"><div class="nav-tab-icon">📊</div><div class="nav-tab-label">Dashboard</div></button>
+    <button class="nav-tab" onclick="nav('clients',this)"><div class="nav-tab-icon">👥</div><div class="nav-tab-label">Clients</div></button>
+    <button class="nav-tab" onclick="nav('pannes',this)"><div class="nav-tab-icon">🚨</div><div class="nav-tab-label">Pannes</div></button>
+    <button class="nav-tab" onclick="nav('import',this)"><div class="nav-tab-icon">📥</div><div class="nav-tab-label">Import</div></button>
+    <button class="nav-tab active" onclick="nav('plus',this)"><div class="nav-tab-icon">☰</div><div class="nav-tab-label">Plus</div></button>
+  </nav>
+</div>
+
+<!-- ═══ ACHATS ═══ -->
+<div class="screen" id="screen-achats">
+  <div class="screen-header"><button class="back-btn" onclick="goTo('screen-plus')">← Retour</button><div class="screen-header-title">🛒 Liste d'achats</div></div>
+  <div class="screen-body">
+    <div style="display:flex;gap:8px;margin-bottom:10px">
+      <input id="new-achat" placeholder="Ajouter un article…" class="form-input" style="flex:1" onkeydown="if(event.key==='Enter')addAchat()">
+      <select id="new-urg" class="form-select" style="width:100px">
+        <option value="urgent">🔴 Urgent</option>
+        <option value="normal" selected>🔵 Normal</option>
+        <option value="stock">🟡 Stock</option>
+      </select>
+    </div>
+    <button class="btn btn-brand" style="margin-bottom:16px" onclick="addAchat()">+ Ajouter</button>
+    <div id="achats-view"></div>
+  </div>
+  <nav class="bottom-nav">
+    <button class="nav-tab" onclick="nav('dashboard',this)"><div class="nav-tab-icon">📊</div><div class="nav-tab-label">Dashboard</div></button>
+    <button class="nav-tab" onclick="nav('clients',this)"><div class="nav-tab-icon">👥</div><div class="nav-tab-label">Clients</div></button>
+    <button class="nav-tab" onclick="nav('pannes',this)"><div class="nav-tab-icon">🚨</div><div class="nav-tab-label">Pannes</div></button>
+    <button class="nav-tab" onclick="nav('import',this)"><div class="nav-tab-icon">📥</div><div class="nav-tab-label">Import</div></button>
+    <button class="nav-tab active" onclick="nav('plus',this)"><div class="nav-tab-icon">☰</div><div class="nav-tab-label">Plus</div></button>
+  </nav>
+</div>
+
+<!-- ═══ PROMOS ═══ -->
+<div class="screen" id="screen-promos">
+  <div class="screen-header"><button class="back-btn" onclick="goTo('screen-plus')">← Retour</button><div class="screen-header-title">🎟️ Codes promo</div></div>
+  <div class="screen-body">
+    <div class="card"><div class="card-head"><div class="card-title">Créer un code</div></div>
+      <div class="card-body">
+        <div class="form-group"><label class="form-label">Description</label><input class="form-input" id="p-val" placeholder="ex: -20% ce weekend" oninput="genCode()"></div>
+        <div style="background:linear-gradient(135deg,var(--brand),var(--brand-dark));border-radius:var(--radius-sm);padding:18px;text-align:center;color:white;margin-bottom:14px">
+          <div style="font-size:10px;opacity:0.7;margin-bottom:6px;text-transform:uppercase;letter-spacing:1px">Code généré</div>
+          <div style="font-family:'Clash Display',sans-serif;font-size:30px;font-weight:700;letter-spacing:3px" id="promo-preview">WASH——</div>
+        </div>
+        <button class="btn btn-brand" onclick="sendPromo()">🚀 Créer ce code</button>
+      </div>
+    </div>
+    <div class="card"><div class="card-head"><div class="card-title">Codes actifs</div></div><div style="padding:0 18px" id="promos-list"></div></div>
+  </div>
+  <nav class="bottom-nav">
+    <button class="nav-tab" onclick="nav('dashboard',this)"><div class="nav-tab-icon">📊</div><div class="nav-tab-label">Dashboard</div></button>
+    <button class="nav-tab" onclick="nav('clients',this)"><div class="nav-tab-icon">👥</div><div class="nav-tab-label">Clients</div></button>
+    <button class="nav-tab" onclick="nav('pannes',this)"><div class="nav-tab-icon">🚨</div><div class="nav-tab-label">Pannes</div></button>
+    <button class="nav-tab" onclick="nav('import',this)"><div class="nav-tab-icon">📥</div><div class="nav-tab-label">Import</div></button>
+    <button class="nav-tab active" onclick="nav('plus',this)"><div class="nav-tab-icon">☰</div><div class="nav-tab-label">Plus</div></button>
+  </nav>
+</div>
+
+<!-- ═══ AVIS ═══ -->
+<div class="screen" id="screen-avis">
+  <div class="screen-header"><button class="back-btn" onclick="goTo('screen-plus')">← Retour</button><div class="screen-header-title">⭐ Avis Google</div></div>
+  <div class="screen-body">
+    <div class="kpi-grid">
+      <div class="kpi-card gold"><div class="kpi-val">4,7 ⭐</div><div class="kpi-label">Note Google</div></div>
+      <div class="kpi-card green"><div class="kpi-val">34%</div><div class="kpi-label">Taux clic SMS</div></div>
+    </div>
+    <div class="card"><div class="card-head"><div class="card-title">Configuration</div></div><div class="card-body">
+      <div class="toggle-row"><div><div style="font-size:14px;font-weight:500">SMS automatique après lavage</div><div style="font-size:12px;color:var(--muted)">30 min après paiement CB</div></div><div class="toggle on" onclick="this.classList.toggle('on')"></div></div>
+      <div class="toggle-row"><div><div style="font-size:14px;font-weight:500">Cashback +0,50€ pour avis ≥ 4★</div></div><div class="toggle on" onclick="this.classList.toggle('on')"></div></div>
+      <div style="margin-top:14px">
+        <div class="form-group"><label class="form-label">Lien Google My Business</label><input class="form-input" value="https://g.page/r/CVLZ7U-YsMqdEAE/review"></div>
+        <button class="btn btn-brand" onclick="toast('✅ Sauvegardé !')">Sauvegarder</button>
+      </div>
+    </div></div>
+  </div>
+  <nav class="bottom-nav">
+    <button class="nav-tab" onclick="nav('dashboard',this)"><div class="nav-tab-icon">📊</div><div class="nav-tab-label">Dashboard</div></button>
+    <button class="nav-tab" onclick="nav('clients',this)"><div class="nav-tab-icon">👥</div><div class="nav-tab-label">Clients</div></button>
+    <button class="nav-tab" onclick="nav('pannes',this)"><div class="nav-tab-icon">🚨</div><div class="nav-tab-label">Pannes</div></button>
+    <button class="nav-tab" onclick="nav('import',this)"><div class="nav-tab-icon">📥</div><div class="nav-tab-label">Import</div></button>
+    <button class="nav-tab active" onclick="nav('plus',this)"><div class="nav-tab-icon">☰</div><div class="nav-tab-label">Plus</div></button>
+  </nav>
+</div>
+
+<!-- ═══ QR CODES ═══ -->
+<div class="screen" id="screen-qrcodes">
+  <div class="screen-header"><button class="back-btn" onclick="goTo('screen-plus')">← Retour</button><div class="screen-header-title">📱 QR Codes</div></div>
+  <div class="screen-body">
+    <div class="card"><div class="card-head"><div class="card-title">🚗 Portique de lavage</div></div><div class="card-body" style="text-align:center"><div id="qr-portique" style="margin:0 auto 12px;display:inline-block"></div><div style="font-size:13px;color:var(--muted);margin-bottom:12px">Scannez avant de choisir votre programme</div><button class="btn btn-brand" onclick="toast('🖨️ Impression…')">🖨️ Imprimer</button></div></div>
+    <div class="card"><div class="card-head"><div class="card-title">🪙 Distributeur de jetons DJ3</div></div><div class="card-body" style="text-align:center"><div id="qr-dj3" style="margin:0 auto 12px;display:inline-block"></div><div style="font-size:13px;color:var(--muted);margin-bottom:12px">Scannez avant d'acheter vos jetons</div><button class="btn btn-brand" onclick="toast('🖨️ Impression…')">🖨️ Imprimer</button></div></div>
+  </div>
+  <nav class="bottom-nav">
+    <button class="nav-tab" onclick="nav('dashboard',this)"><div class="nav-tab-icon">📊</div><div class="nav-tab-label">Dashboard</div></button>
+    <button class="nav-tab" onclick="nav('clients',this)"><div class="nav-tab-icon">👥</div><div class="nav-tab-label">Clients</div></button>
+    <button class="nav-tab" onclick="nav('pannes',this)"><div class="nav-tab-icon">🚨</div><div class="nav-tab-label">Pannes</div></button>
+    <button class="nav-tab" onclick="nav('import',this)"><div class="nav-tab-icon">📥</div><div class="nav-tab-label">Import</div></button>
+    <button class="nav-tab active" onclick="nav('plus',this)"><div class="nav-tab-icon">☰</div><div class="nav-tab-label">Plus</div></button>
+  </nav>
+</div>
+
+<!-- MODAL INTERVENTION -->
+<div class="modal-overlay" id="modal-intervention" onclick="closeMod('modal-intervention',event)">
+  <div class="modal"><div class="modal-drag"></div>
+    <div class="modal-title">✏️ Nouvelle intervention</div>
+    <div class="form-group"><label class="form-label">Date</label><input class="form-input" type="date" id="m-date"></div>
+    <div class="form-group"><label class="form-label">Équipement</label>
+      <select class="form-select" id="m-equip">
+        <option>🔧 Compresseur 1 — Piste HP 1</option><option>🔧 Compresseur 2 — Piste HP 2</option>
+        <option>💦 Pompe HP — Piste 1</option><option>💦 Pompe HP — Piste 2</option>
+        <option>🚗 Portique TL12</option><option>🪙 Monnayeur — Piste 1</option>
+        <option>🌀 Aspirateur 1</option><option>🌀 Aspirateur 2</option>
+        <option>💨 Gonfleur</option><option>✨ Borne jantes</option>
+      </select>
+    </div>
+    <div class="form-group"><label class="form-label">Type</label>
+      <select class="form-select" id="m-type">
+        <option value="vidange">🔵 Vidange</option><option value="controle">🟢 Contrôle</option>
+        <option value="nettoyage">🟠 Nettoyage</option><option value="remplacement">🟡 Remplacement</option><option value="panne">🔴 Panne</option>
+      </select>
+    </div>
+    <div class="form-group"><label class="form-label">Description</label><textarea class="form-ta" id="m-desc" placeholder="Observations…"></textarea></div>
+    <div style="margin-bottom:14px">
+      <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.8px;margin-bottom:8px">🔔 Rappel</div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap" id="rappel-chips">
+        <button class="rappel-chip" onclick="setR(this,7)">7j</button>
+        <button class="rappel-chip" onclick="setR(this,30)">1 mois</button>
+        <button class="rappel-chip" onclick="setR(this,90)">3 mois</button>
+        <button class="rappel-chip active" onclick="setR(this,365)">1 an</button>
+        <button class="rappel-chip" onclick="setR(this,730)">2 ans</button>
+      </div>
+      <div style="font-size:12px;color:var(--brand);margin-top:8px;padding:8px 12px;background:var(--brand-light);border-radius:8px" id="r-preview">📅 Rappel dans 1 an</div>
+    </div>
+    <div class="form-group"><label class="form-label">Coût (€)</label><input class="form-input" type="number" id="m-cout" placeholder="0"></div>
+    <div style="display:flex;gap:10px;margin-top:16px">
+      <button class="btn btn-ghost" style="flex:1" onclick="document.getElementById('modal-intervention').classList.remove('open')">Annuler</button>
+      <button class="btn btn-brand" style="flex:2" onclick="saveIntervention()">✅ Enregistrer</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL CRÉDIT -->
+<div class="modal-overlay" id="modal-credit" onclick="closeMod('modal-credit',event)">
+  <div class="modal"><div class="modal-drag"></div>
+    <div class="modal-title">💶 Créditer le client</div>
+    <div class="modal-sub" id="credit-info">Compensation suite au problème.</div>
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:14px" id="credit-opts">
+      <div onclick="selC(this,'2')" style="padding:12px 4px;border-radius:var(--radius-sm);border:1.5px solid var(--border);text-align:center;cursor:pointer"><div style="font-family:'Clash Display',sans-serif;font-size:18px;color:var(--brand)">2€</div><div style="font-size:10px;color:var(--muted)">Geste</div></div>
+      <div onclick="selC(this,'6')" style="padding:12px 4px;border-radius:var(--radius-sm);border:1.5px solid var(--brand);background:var(--brand-light);text-align:center;cursor:pointer"><div style="font-family:'Clash Display',sans-serif;font-size:18px;color:var(--brand)">6€</div><div style="font-size:10px;color:var(--muted)">Lavage</div></div>
+      <div onclick="selC(this,'10')" style="padding:12px 4px;border-radius:var(--radius-sm);border:1.5px solid var(--border);text-align:center;cursor:pointer"><div style="font-family:'Clash Display',sans-serif;font-size:18px;color:var(--brand)">10€</div><div style="font-size:10px;color:var(--muted)">Remb.</div></div>
+      <div onclick="selC(this,'20')" style="padding:12px 4px;border-radius:var(--radius-sm);border:1.5px solid var(--border);text-align:center;cursor:pointer"><div style="font-family:'Clash Display',sans-serif;font-size:18px;color:var(--brand)">20€</div><div style="font-size:10px;color:var(--muted)">Fidél.</div></div>
+    </div>
+    <textarea class="form-ta" id="credit-msg" style="margin-bottom:16px">Suite au problème rencontré, nous créditons votre portefeuille. Toutes nos excuses.</textarea>
+    <div style="display:flex;gap:10px">
+      <button class="btn btn-ghost" style="flex:1" onclick="document.getElementById('modal-credit').classList.remove('open')">Annuler</button>
+      <button class="btn btn-brand" style="flex:2" onclick="confirmCredit()">💶 Créditer</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ════ SUPABASE ════
+const SUPABASE_URL='https://hpucsjjbbklqqvpljbgr.supabase.co';
+const SUPABASE_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhwdWNzampiYmtscXF2cGxqYmdyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzcyMTk4MDUsImV4cCI6MjA5Mjc5NTgwNX0.3cFAvaL0TIXzO1N3lu59hLrf_8td5ADC5a0gGbXKmgY';
+const sb=supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
+
+const PROG_LAVAGE={6:'ECO',8:'CONFORT',12:'EXTRA',16:'LUXE',20:'ULTRA BRILLANCE'};
+const PROG_JETONS={2:'1 jeton',10:'5 jetons',20:'10 jetons',30:'15 jetons',50:'25 jetons'};
+const CASHBACK_LAVAGE={6:0.03,8:0.04,12:0.05,16:0.07,20:0.10};
+const CASHBACK_JETONS={2:0.03,10:0.05,20:0.08,30:0.08,50:0.10};
+
+// ════ SUPABASE ════
+const SUPABASE_URL='https://hpucsjjbbklqqvpljbgr.supabase.co';
+const SUPABASE_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhwdWNzampiYmtscXF2cGxqYmdyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzcyMTk4MDUsImV4cCI6MjA5Mjc5NTgwNX0.3cFAvaL0TIXzO1N3lu59hLrf_8td5ADC5a0gGbXKmgY';
+let sb;
+try { sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY); } catch(e) { console.error('Supabase init error:', e); }
+let selCredit='6',rappelJours=365;
+
+// ── NAV ──
+const screenMap={dashboard:'screen-dashboard',clients:'screen-clients',pannes:'screen-pannes',import:'screen-import',plus:'screen-plus'};
+function goTo(id){document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));document.getElementById(id).classList.add('active');window.scrollTo(0,0);}
+function nav(tab,el){
+  goTo(screenMap[tab]);
+  // Mettre à jour uniquement les tabs du même bottom-nav que le bouton cliqué
+  const parentNav=el.closest('.bottom-nav');
+  if(parentNav) parentNav.querySelectorAll('.nav-tab').forEach(t=>t.classList.remove('active'));
+  el.classList.add('active');
+}
+function openMod(id){document.getElementById(id).classList.add('open');}
+function closeMod(id,e){if(e.target===document.getElementById(id))document.getElementById(id).classList.remove('open');}
+function toast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),3000);}
+
+// ── DASHBOARD ──
+async function loadDashboard(){
+  const [{data:tx},{data:clients},{data:pNew},{data:lastTx}]=await Promise.all([
+    sb.from('transactions').select('montant,cashback_gagne').gte('date_transaction',new Date(new Date().getFullYear(),new Date().getMonth(),1).toISOString().slice(0,10)),
+    sb.from('clients').select('id,cashback_solde'),
+    sb.from('pannes').select('id').eq('statut','new'),
+    sb.from('transactions').select('*,clients(prenom,nom)').order('created_at',{ascending:false}).limit(5)
+  ]);
+  const ca=tx?tx.reduce((s,t)=>s+(t.montant||0),0):0;
+  const cash=tx?tx.reduce((s,t)=>s+(t.cashback_gagne||0),0):0;
+  const nbC=clients?clients.length:0;
+  const cbTotal=clients?clients.reduce((s,c)=>s+(c.cashback_solde||0),0):0;
+  document.getElementById('kpi-ca').textContent=ca.toFixed(0)+'€';
+  document.getElementById('kpi-tx').textContent=tx?tx.length:0;
+  document.getElementById('kpi-clients').textContent=nbC;
+  document.getElementById('kpi-cash').textContent=cash.toFixed(2)+'€';
+  document.getElementById('q-clients').textContent=nbC+' inscrits';
+  document.getElementById('q-pannes').textContent=(pNew?pNew.length:0)+' nouvelles';
+  document.getElementById('nb-clients').textContent=nbC;
+  document.getElementById('total-cb').textContent=cbTotal.toFixed(2)+'€';
+  if(lastTx&&lastTx.length){
+    document.getElementById('dash-last-tx').innerHTML=lastTx.map(t=>`
+      <div class="list-row">
+        <div class="list-ico" style="background:${t.produit==='Lavage'?'#dbeafe':'#fef3c7'}">${t.produit==='Lavage'?'🚗':'🪙'}</div>
+        <div style="flex:1"><div style="font-size:14px;font-weight:500">${t.produit==='Lavage'?(PROG_LAVAGE[t.montant]||t.produit):(PROG_JETONS[t.montant]||t.produit)}</div>
+        <div style="font-size:12px;color:var(--muted)">${t.clients?(t.clients.prenom+' '+t.clients.nom):'Anonyme'} · ${new Date(t.date_transaction).toLocaleDateString('fr-FR')}</div></div>
+        <div style="text-align:right"><div style="font-family:'Clash Display',sans-serif;font-size:16px;font-weight:600">${(t.montant||0).toFixed(2)}€</div><div style="font-size:11px;color:var(--green)">+${(t.cashback_gagne||0).toFixed(2)}€</div></div>
+      </div>`).join('');
+  } else {document.getElementById('dash-last-tx').innerHTML='<div style="padding:20px;text-align:center;color:var(--muted);font-size:13px">Aucune transaction encore importée</div>';}
+}
+
+// ── CLIENTS ──
+async function loadClients(){
+  const{data}=await sb.from('clients').select('*').order('created_at',{ascending:false});
+  if(!data)return;
+  allClients=data;
+  renderC(data);
+  document.getElementById('clients-sub').textContent=data.length+' clients inscrits';
+}
+const lvlLabel={bronze:'◇ Bronze',silver:'◈ Silver',gold:'✦ Gold',platinum:'✦✦ Platinum'};
+function renderC(list){
+  document.getElementById('clients-list').innerHTML=list.length?list.map(c=>`
+    <div class="list-row">
+      <div class="client-av" style="background:${c.niveau==='gold'?'#f59e0b':c.niveau==='platinum'?'#a855f7':'var(--brand)'}">${(c.prenom||'?')[0]}${(c.nom||'')[0]||''}</div>
+      <div style="flex:1"><div style="font-size:14px;font-weight:600">${c.prenom||''} ${c.nom||''}</div>
+      <div style="font-size:12px;color:var(--muted);margin-top:2px">${c.telephone||'—'} · ${lvlLabel[c.niveau]||'Bronze'} · ${c.nb_lavages||0} lavages</div></div>
+      <div style="text-align:right"><div style="font-family:'Clash Display',sans-serif;font-size:18px;color:var(--green)">${(c.cashback_solde||0).toFixed(2)}€</div>
+      <div style="font-size:11px;color:var(--muted)">${c.derniere_visite?new Date(c.derniere_visite).toLocaleDateString('fr-FR'):'—'}</div></div>
+    </div>`).join(''):'<div style="padding:20px;text-align:center;color:var(--muted)">Aucun client inscrit</div>';
+}
+function filterC(level,el){document.querySelectorAll('#screen-clients .chip').forEach(c=>c.classList.remove('active'));el.classList.add('active');renderC(level==='all'?allClients:level==='inactive'?allClients.filter(c=>!c.actif):allClients.filter(c=>c.niveau===level));}
+function searchC(q){renderC(allClients.filter(c=>(c.prenom+' '+c.nom).toLowerCase().includes(q.toLowerCase())));}
+function exportClients(){const csv=['Prénom;Nom;Téléphone;Cashback;Lavages;Niveau',...allClients.map(c=>`${c.prenom};${c.nom};${c.telephone};${(c.cashback_solde||0).toFixed(2)};${c.nb_lavages||0};${c.niveau}`)].join('\n');const a=document.createElement('a');a.href='data:text/csv;charset=utf-8,\uFEFF'+encodeURIComponent(csv);a.download='clients.csv';a.click();toast('⬇ Export CSV !');}
+
+// ── PANNES ──
+async function loadPannes(){
+  const{data}=await sb.from('pannes').select('*').order('created_at',{ascending:false});
+  if(!data)return;
+  allPannes=data.map(p=>({id:p.id,client:p.client_telephone||'Client',tel:p.client_telephone||'—',appareil:p.appareil,type:p.type_probleme,desc:p.description||'',date:new Date(p.created_at).toLocaleDateString('fr-FR'),status:p.statut}));
+  renderP(allPannes);
+  document.getElementById('nb-new').textContent=allPannes.filter(p=>p.status==='new').length;
+  document.getElementById('nb-prog').textContent=allPannes.filter(p=>p.status==='progress').length;
+  document.getElementById('q-pannes').textContent=allPannes.filter(p=>p.status==='new').length+' nouvelles';
+}
+const sLabel={new:'🔴 Nouveau',progress:'🟠 En cours',resolved:'🟢 Résolu'};
+const sBadge={new:'badge-red',progress:'badge-gold',resolved:'badge-green'};
+function renderP(list){
+  document.getElementById('pannes-list').innerHTML=list.length?list.map(p=>`
+    <div class="panne-card ${p.status}">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px">
+        <div><div style="font-size:14px;font-weight:700">${p.appareil}</div><div style="font-size:12px;color:var(--muted);margin-top:2px">${p.type} · ${p.date}</div></div>
+        <span class="badge ${sBadge[p.status]}">${sLabel[p.status]}</span>
+      </div>
+      ${p.desc?`<div style="font-size:13px;color:var(--muted);font-style:italic;margin-bottom:8px">"${p.desc}"</div>`:''}
+      <div style="font-size:12px;color:var(--muted);margin-bottom:10px">📱 ${p.tel}</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button class="btn btn-ghost btn-sm" onclick="window.location.href='tel:${p.tel.replace(/\s/g,'')}';toast('📞…')">📞 Appeler</button>
+        <button class="btn btn-outline btn-sm" onclick="openCreditMod('${p.id}','${p.client}','${p.appareil}')">💶 Créditer</button>
+        ${p.status!=='resolved'?`<button class="btn btn-green btn-sm" onclick="resolveP('${p.id}')">✅ Résoudre</button>`:''}
+      </div>
+    </div>`).join(''):'<div style="padding:20px;text-align:center;color:var(--muted)">Aucune panne signalée</div>';
+}
+function filterP(s,el){document.querySelectorAll('#screen-pannes .chip').forEach(c=>c.classList.remove('active'));el.classList.add('active');renderP(s==='all'?allPannes:allPannes.filter(p=>p.status===s));}
+function openCreditMod(id,client,app){document.getElementById('credit-info').textContent=`Compensation pour ${client} — ${app}.`;openMod('modal-credit');}
+function selC(el,amount){document.querySelectorAll('#credit-opts > div').forEach(o=>{o.style.border='1.5px solid var(--border)';o.style.background='white';});el.style.border='1.5px solid var(--brand)';el.style.background='var(--brand-light)';selCredit=amount;}
+function confirmCredit(){document.getElementById('modal-credit').classList.remove('open');toast(`💶 ${selCredit}€ crédités ✅`);}
+async function resolveP(id){await sb.from('pannes').update({statut:'resolved',resolu_le:new Date().toISOString()}).eq('id',id);await loadPannes();toast('✅ Incident résolu');}
+
+// ── IMPORT ──
+const fileInput=document.getElementById('file-input');
+const dropZone=document.getElementById('drop-zone');
+fileInput.addEventListener('change',e=>{if(e.target.files[0])processFile(e.target.files[0]);});
+dropZone.addEventListener('dragover',e=>{e.preventDefault();dropZone.classList.add('drag');});
+dropZone.addEventListener('dragleave',()=>dropZone.classList.remove('drag'));
+dropZone.addEventListener('drop',e=>{e.preventDefault();dropZone.classList.remove('drag');if(e.dataTransfer.files[0])processFile(e.dataTransfer.files[0]);});
+
+async function processFile(file){
+  const reader=new FileReader();
+  reader.onload=async e=>{
+    try{
+      toast('⏳ Lecture…');
+      const wb=XLSX.read(new Uint8Array(e.target.result),{type:'array',cellDates:true});
+      const rows=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{header:1,defval:null,raw:false});
+
+      // Détecter le type de fichier : Journal CB ou Journal Complet
+      let hRow=-1, isJournalCB=false;
+      for(let i=0;i<rows.length;i++){
+        if(rows[i]&&rows[i][0]==='Site'&&rows[i][1]==='Equipement'){hRow=i;isJournalCB=true;break;}
+        if(rows[i]&&rows[i][0]==='Index'){hRow=i;break;}
+      }
+      if(hRow===-1){toast('❌ Format non reconnu');return;}
+
+      const h=rows[hRow];
+      allImportTx=[];let ignored=0;
+
+      if(isJournalCB){
+        // ── FORMAT JOURNAL CB (avec heure exacte et hash CB) ──
+        const cEquip=h.indexOf('Equipement'),cDate=h.indexOf('Horodatage'),cCB=h.indexOf('CB');
+        const cProd=h.indexOf('Produit'),cQte=h.indexOf('Quantité'),cMontant=h.indexOf('Montant');
+
+        for(let i=hRow+1;i<rows.length;i++){
+          const row=rows[i];if(!row||row[0]===null)continue;
+          const equip=row[cEquip],dateVal=row[cDate],hashCB=row[cCB];
+          const produit=row[cProd],montant=parseFloat(row[cMontant])||0;
+          if(!equip||!dateVal||montant===0)continue;
+
+          // Parser la date avec heure
+          let dateISO=null, heureStr=null;
+          if(dateVal instanceof Date){
+            dateISO=`${dateVal.getFullYear()}-${String(dateVal.getMonth()+1).padStart(2,'0')}-${String(dateVal.getDate()).padStart(2,'0')}`;
+            heureStr=`${String(dateVal.getHours()).padStart(2,'0')}:${String(dateVal.getMinutes()).padStart(2,'0')}:${String(dateVal.getSeconds()).padStart(2,'0')}`;
+          } else if(typeof dateVal==='string'){
+            const parts=dateVal.split(' ');
+            if(parts.length>=2){
+              const dp=parts[0].split('/');
+              dateISO=dp.length===3?`${dp[2]}-${dp[1].padStart(2,'0')}-${dp[0].padStart(2,'0')}`:parts[0];
+              heureStr=parts[1];
+            }
+          }
+          if(!dateISO)continue;
+
+          // Déterminer produit et programme depuis équipement
+          const isPortique=equip==='MSTART'||equip.includes('START');
+          const produitNorm=isPortique?'Lavage':'Jetons';
+          let taux=0;
+          if(produitNorm==='Lavage')taux=CASHBACK_LAVAGE[montant]||0;
+          if(produitNorm==='Jetons')taux=CASHBACK_JETONS[montant]||0;
+          const nomProg=produitNorm==='Lavage'?(PROG_LAVAGE[montant]||'Lavage '+montant+'€'):(PROG_JETONS[montant]||'Jetons '+montant+'€');
+
+          allImportTx.push({
+            indexTx: dateVal+equip, dateISO, heureStr,
+            dateDisplay:dateISO.split('-').reverse().join('/')+(heureStr?' '+heureStr:''),
+            nomProg, produit:produitNorm, equipement:equip,
+            paiement:'CB', prix:montant,
+            cashback:Math.round(montant*taux*100)/100, taux,
+            hashCB: hashCB||null,
+            client_id:null,client_nom:null,statut:'non_rapproche'
+          });
+        }
+        toast(`✅ Journal CB — ${allImportTx.length} transactions avec heure exacte !`);
+
+      } else {
+        // ── FORMAT JOURNAL COMPLET (sans heure) ──
+        const cDate=h.indexOf('Horodatage'),cProg=h.indexOf('Programme'),cPrix=h.indexOf('Prix');
+        const cProd=h.indexOf('Produit'),cPay=h.indexOf('Paiement'),cIdx=h.indexOf('Index');
+
+        for(let i=hRow+1;i<rows.length;i++){
+          const row=rows[i];if(!row||row[0]===null)continue;
+          const produit=row[cProd],paiement=row[cPay],prix=parseFloat(row[cPrix])||0,date=row[cDate],prog=row[cProg],indexTx=row[cIdx];
+          if(produit==='Non abouti'||!['CB','NFC'].includes(paiement)||prix===0){ignored++;continue;}
+          let taux=0;
+          if(produit==='Lavage')taux=CASHBACK_LAVAGE[prix]||0;
+          if(produit==='Jetons')taux=CASHBACK_JETONS[prix]||0;
+          let dateISO=null;
+          if(typeof date==='number'){const d=new Date(new Date(1899,11,30).getTime()+date*86400000);dateISO=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;}
+          else if(date instanceof Date){dateISO=`${date.getUTCFullYear()}-${String(date.getUTCMonth()+1).padStart(2,'0')}-${String(date.getUTCDate()).padStart(2,'0')}`;}
+          else if(typeof date==='string'){dateISO=date.slice(0,10);}
+          const nomProg=produit==='Lavage'?(PROG_LAVAGE[prix]||'Prog.'+prog):(PROG_JETONS[prix]||'Prog.'+prog);
+          allImportTx.push({indexTx,dateISO,heureStr:null,dateDisplay:dateISO?dateISO.split('-').reverse().join('/'):'—',nomProg,produit,paiement,prix,cashback:Math.round(prix*taux*100)/100,taux,hashCB:null,client_id:null,client_nom:null,statut:'non_rapproche'});
+        }
+      }
+
+      const totalCA=allImportTx.reduce((s,t)=>s+t.prix,0);
+      const totalCash=allImportTx.reduce((s,t)=>s+t.cashback,0);
+      document.getElementById('imp-total').textContent=allImportTx.length;
+      document.getElementById('imp-ca').textContent=totalCA.toFixed(0)+'€';
+      document.getElementById('imp-cash').textContent=totalCash.toFixed(2)+'€';
+      document.getElementById('imp-ignored').textContent=ignored;
+      document.getElementById('import-results').style.display='block';
+      dropZone.style.display='none';
+      renderImportTable();
+      await rapprocherTx();
+    }catch(err){toast('❌ Erreur: '+err.message);console.error(err);}
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+async function rapprocherTx(){
+  // Charger les scans ET les clients avec leur hashCB stocké
+  const{data:scans}=await sb.from('scans').select('client_id,borne,heure_scan,clients(id,prenom,nom,cashback_solde,cashback_total_gagne,nb_lavages,hash_cb)').order('heure_scan',{ascending:true});
+  const{data:clientsData}=await sb.from('clients').select('id,prenom,nom,cashback_solde,cashback_total_gagne,nb_lavages,hash_cb');
+
+  // Index clients par hashCB (identification automatique sans scan)
+  const clientsByHash={};
+  if(clientsData){
+    for(const c of clientsData){
+      if(c.hash_cb) clientsByHash[c.hash_cb]=c;
+    }
+  }
+
+  // Index scans par date+heure+borne (fenêtre 2 minutes)
+  const scansList=scans||[];
+
+  let nbRapprochesHash=0, nbRapprochesTemps=0;
+
+  for(const tx of allImportTx){
+    if(!tx.dateISO)continue;
+
+    // 1. Rapprochement par hash CB (identification directe — meilleur)
+    if(tx.hashCB && clientsByHash[tx.hashCB]){
+      const client=clientsByHash[tx.hashCB];
+      tx.client_id=client.id;
+      tx.client_nom=client.prenom+' '+client.nom;
+      tx.statut='rapproche';
+      nbRapprochesHash++;
+      continue;
+    }
+
+    // 2. Rapprochement par scan temporel (fenêtre 2 minutes avant transaction)
+    if(tx.heureStr && scansList.length){
+      const txDatetime=new Date(tx.dateISO+'T'+tx.heureStr);
+      const borneType=(tx.produit==='Jetons')?'jetons':'portique';
+
+      for(const scan of scansList){
+        if(!scan.heure_scan||!scan.clients)continue;
+        const scanDatetime=new Date(scan.heure_scan);
+        const b=(scan.borne||'').toLowerCase();
+        const scanBorneType=(b.includes('jeton')||b.includes('dj3'))?'jetons':'portique';
+        if(scanBorneType!==borneType)continue;
+
+        // Fenêtre : scan entre 30 min avant et 2 min après la transaction
+        const diffMin=(txDatetime-scanDatetime)/60000;
+        if(diffMin>=0 && diffMin<=30){
+          tx.client_id=scan.client_id;
+          tx.client_nom=scan.clients.prenom+' '+scan.clients.nom;
+          tx.statut='rapproche';
+          nbRapprochesTemps++;
+          break;
+        }
+      }
+    }
+  }
+
+  renderImportTable();
+  toast(`🔗 ${nbRapprochesHash} par CB · ${nbRapprochesTemps} par scan — Crédit cashback…`);
+
+  // Créditer le cashback
+  const rapproches=allImportTx.filter(t=>t.statut==='rapproche'&&t.client_id&&t.cashback>0);
+  let nbCredites=0;
+
+  for(const tx of rapproches){
+    const refKey=tx.hashCB?tx.hashCB+'_'+tx.dateISO+'_'+tx.heureStr:String(tx.indexTx);
+    const{data:existing}=await sb.from('transactions').select('id').eq('ref_lavaccess',refKey).maybeSingle();
+    if(existing)continue;
+
+    const{error:errTx}=await sb.from('transactions').insert({
+      client_id:tx.client_id,date_transaction:tx.dateISO,
+      produit:tx.produit,paiement:'CB',montant:tx.prix,
+      cashback_gagne:tx.cashback,taux_cashback:tx.taux,
+      ref_lavaccess:refKey,import_batch:new Date().toISOString().slice(0,10)
+    });
+    if(errTx)continue;
+
+    // Sauvegarder le hashCB sur le client si pas encore fait
+    if(tx.hashCB){
+      await sb.from('clients').update({hash_cb:tx.hashCB}).eq('id',tx.client_id).is('hash_cb',null);
+    }
+
+    const{data:client}=await sb.from('clients').select('cashback_solde,cashback_total_gagne,nb_lavages').eq('id',tx.client_id).single();
+    if(client){
+      await sb.from('clients').update({cashback_solde:(client.cashback_solde||0)+tx.cashback,cashback_total_gagne:(client.cashback_total_gagne||0)+tx.cashback,nb_lavages:(client.nb_lavages||0)+1,derniere_visite:new Date(tx.dateISO).toISOString()}).eq('id',tx.client_id);
+      await sb.from('cashback_log').insert({client_id:tx.client_id,montant:tx.cashback,type:'credit',description:`Journal CB — ${tx.nomProg} ${tx.prix}€ (${Math.round(tx.taux*100)}%)`});
+      nbCredites++;
+    }
+  }
+
+  document.getElementById('imp-cash').textContent=rapproches.reduce((s,t)=>s+t.cashback,0).toFixed(2)+'€';
+  renderImportTable();
+  toast(`🎉 ${nbCredites} cashbacks crédités !`);
+}
+      let hRow=-1;
+      for(let i=0;i<rows.length;i++){if(rows[i]&&rows[i][0]==='Index'){hRow=i;break;}}
+      if(hRow===-1){toast('❌ Format non reconnu');return;}
+      const h=rows[hRow];
+      const cDate=h.indexOf('Horodatage'),cProg=h.indexOf('Programme'),cPrix=h.indexOf('Prix'),cProd=h.indexOf('Produit'),cPay=h.indexOf('Paiement'),cIdx=h.indexOf('Index');
+      allImportTx=[];let ignored=0;
+      for(let i=hRow+1;i<rows.length;i++){
+        const row=rows[i];if(!row||row[0]===null)continue;
+        const produit=row[cProd],paiement=row[cPay],prix=parseFloat(row[cPrix])||0,date=row[cDate],prog=row[cProg],indexTx=row[cIdx];
+        if(produit==='Non abouti'||!['CB','NFC'].includes(paiement)||prix===0){ignored++;continue;}
+        let taux=0;
+        if(produit==='Lavage')taux=CASHBACK_LAVAGE[prix]||0;
+        if(produit==='Jetons')taux=CASHBACK_JETONS[prix]||0;
+        let dateISO=null;
+        if(date){if(typeof date==='number'){const d=new Date(new Date(1899,11,30).getTime()+date*86400000);dateISO=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;}else if(date instanceof Date){dateISO=`${date.getUTCFullYear()}-${String(date.getUTCMonth()+1).padStart(2,'0')}-${String(date.getUTCDate()).padStart(2,'0')}`;}else if(typeof date==='string'){dateISO=date.slice(0,10);}}
+        const nomProg=produit==='Lavage'?(PROG_LAVAGE[prix]||'Prog.'+prog):(PROG_JETONS[prix]||'Prog.'+prog);
+        allImportTx.push({indexTx,dateISO,dateDisplay:dateISO?dateISO.split('-').reverse().join('/'):'—',programme:prog,nomProg,produit,paiement,prix,cashback:Math.round(prix*taux*100)/100,taux,client_id:null,client_nom:null,statut:'non_rapproche'});
+      }
+      const totalCA=allImportTx.reduce((s,t)=>s+t.prix,0);
+      const totalCash=allImportTx.reduce((s,t)=>s+t.cashback,0);
+      document.getElementById('imp-total').textContent=allImportTx.length;
+      document.getElementById('imp-ca').textContent=totalCA.toFixed(0)+'€';
+      document.getElementById('imp-cash').textContent=totalCash.toFixed(2)+'€';
+      document.getElementById('imp-ignored').textContent=ignored;
+      document.getElementById('import-results').style.display='block';
+      dropZone.style.display='none';
+      renderImportTable();
+      toast(`✅ ${allImportTx.length} transactions — Rapprochement…`);
+      await rapprocherTx();
+    }catch(err){toast('❌ Erreur: '+err.message);console.error(err);}
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+async function rapprocherTx(){
+  const{data:scans}=await sb.from('scans').select('client_id,borne,heure_scan,clients(id,prenom,nom,cashback_solde,cashback_total_gagne,nb_lavages)').order('heure_scan',{ascending:true});
+  if(!scans||!scans.length){toast('ℹ️ Aucun scan client');renderImportTable();return;}
+  const byDateBorne={};
+  for(const scan of scans){
+    if(!scan.heure_scan||!scan.clients)continue;
+    const dk=scan.heure_scan.slice(0,10);
+    const b=(scan.borne||'').toLowerCase();
+    const bt=(b.includes('jeton')||b.includes('dj3'))?'Jetons':'Lavage';
+    const key=dk+'_'+bt;
+    if(!byDateBorne[key])byDateBorne[key]=[];
+    byDateBorne[key].push(scan);
+  }
+  let nbR=0;
+  for(const tx of allImportTx){
+    if(!tx.dateISO)continue;
+    const scansJ=byDateBorne[tx.dateISO+'_'+tx.produit]||[];
+    if(!scansJ.length)continue;
+    tx.client_id=scansJ[0].client_id;
+    tx.client_nom=scansJ[0].clients?(scansJ[0].clients.prenom+' '+scansJ[0].clients.nom):'—';
+    tx.statut=scansJ.length>1?'ambigue':'rapproche';
+    nbR++;
+  }
+  renderImportTable();
+  toast(`🔗 ${nbR} rapprochés — Crédit cashback…`);
+  const rapproches=allImportTx.filter(t=>t.statut==='rapproche'&&t.client_id&&t.cashback>0);
+  let nbCredites=0;
+  for(const tx of rapproches){
+    const{data:existing}=await sb.from('transactions').select('id').eq('ref_lavaccess',String(tx.indexTx)).maybeSingle();
+    if(existing)continue;
+    const{error:errTx}=await sb.from('transactions').insert({client_id:tx.client_id,date_transaction:tx.dateISO,produit:tx.produit,programme:tx.programme,paiement:tx.paiement,montant:tx.prix,cashback_gagne:tx.cashback,taux_cashback:tx.taux,ref_lavaccess:String(tx.indexTx),import_batch:new Date().toISOString().slice(0,10)});
+    if(errTx)continue;
+    const{data:client}=await sb.from('clients').select('cashback_solde,cashback_total_gagne,nb_lavages').eq('id',tx.client_id).single();
+    if(client){
+      await sb.from('clients').update({cashback_solde:(client.cashback_solde||0)+tx.cashback,cashback_total_gagne:(client.cashback_total_gagne||0)+tx.cashback,nb_lavages:(client.nb_lavages||0)+1,derniere_visite:new Date(tx.dateISO).toISOString()}).eq('id',tx.client_id);
+      await sb.from('cashback_log').insert({client_id:tx.client_id,montant:tx.cashback,type:'credit',description:`Import Lavaccess — ${tx.nomProg} ${tx.prix}€ (${Math.round(tx.taux*100)}%)`});
+      nbCredites++;
+    }
+  }
+  document.getElementById('imp-cash').textContent=rapproches.reduce((s,t)=>s+t.cashback,0).toFixed(2)+'€';
+  renderImportTable();
+  toast(`🎉 ${nbCredites} cashbacks crédités !`);
+}
+
+function renderImportTable(){
+  document.getElementById('import-tbody').innerHTML=allImportTx.slice(0,50).map(t=>`
+    <tr>
+      <td style="color:var(--muted);white-space:nowrap">${t.dateDisplay}</td>
+      <td><span class="pct-badge pct-${Math.round(t.taux*100)}">${t.nomProg}</span></td>
+      <td><span class="badge ${t.paiement==='CB'?'badge-green':'badge-blue'}">${t.paiement}</span></td>
+      <td style="font-weight:600;white-space:nowrap">${t.prix.toFixed(2)}€</td>
+      <td style="color:var(--green);white-space:nowrap">+${t.cashback.toFixed(2)}€</td>
+      <td>${t.statut==='rapproche'?`<span class="badge badge-green">✅ ${t.client_nom}</span>`:t.statut==='ambigue'?`<span class="badge badge-gold">⚠️ ${t.client_nom}</span>`:`<span class="badge badge-muted">—</span>`}</td>
+    </tr>`).join('');
+}
+function exportCSV(){const csv=['Date;Programme;Paiement;Montant;Cashback;Client',...allImportTx.map(t=>`${t.dateDisplay};${t.nomProg};${t.paiement};${t.prix.toFixed(2)};${t.cashback.toFixed(2)};${t.client_nom||'—'}`)].join('\n');const a=document.createElement('a');a.href='data:text/csv;charset=utf-8,\uFEFF'+encodeURIComponent(csv);a.download='cashbacks.csv';a.click();toast('⬇ CSV !');}
+function resetImport(){allImportTx=[];document.getElementById('import-results').style.display='none';dropZone.style.display='';fileInput.value='';}
+
+// ── ENTRETIEN ──
+const ALERTES=[
+  {ico:'🔴',name:'Compresseur 1 — Piste HP 1',sub:'Vidange huile — En retard !',status:'alert'},
+  {ico:'⚠️',name:'Compresseur 2 — Piste HP 2',sub:'Vidange huile — Dans 5 jours',status:'warning'},
+  {ico:'⚠️',name:'Portique TL12 — Brosses',sub:'Nettoyage — Dans 19 jours',status:'warning'},
+];
+let historique=[];
+
+async function loadInterventions(){
+  const{data}=await sb.from('interventions').select('*').order('date_intervention',{ascending:false}).limit(10);
+  if(!data)return;
+  historique=data.map(h=>({date:new Date(h.date_intervention).toLocaleDateString('fr-FR'),equip:h.equipement,type:h.type_intervention,desc:h.description||''}));
+  renderEntretien();
+  document.getElementById('ent-ok').textContent=data.length;
+}
+
+function renderEntretien(){
+  document.getElementById('ent-alertes').innerHTML=ALERTES.map(e=>`
+    <div class="list-row" onclick="openMod('modal-intervention')">
+      <div class="list-ico" style="background:${e.status==='alert'?'var(--red-light)':'#fef3c7'}">${e.ico}</div>
+      <div style="flex:1"><div style="font-size:14px;font-weight:500">${e.name}</div><div style="font-size:11px;color:var(--muted);margin-top:2px">${e.sub}</div></div>
+      <span style="color:var(--brand)">›</span>
+    </div>`).join('');
+  document.getElementById('ent-recent').innerHTML=historique.length?historique.map(h=>`
+    <div class="list-row">
+      <div class="list-ico" style="background:var(--brand-light)">🔧</div>
+      <div style="flex:1"><div style="font-size:14px;font-weight:500">${h.equip}</div><div style="font-size:11px;color:var(--muted);margin-top:2px">${h.desc}</div></div>
+      <div style="font-size:12px;color:var(--muted)">${h.date}</div>
+    </div>`).join(''):'<div style="padding:20px;text-align:center;color:var(--muted);font-size:13px">Aucune intervention</div>';
+}
+
+let rJours=365;
+function setR(el,j){document.querySelectorAll('#rappel-chips .rappel-chip').forEach(c=>c.classList.remove('active'));el.classList.add('active');rJours=j;const d=new Date(document.getElementById('m-date').value);d.setDate(d.getDate()+j);document.getElementById('r-preview').textContent='📅 Rappel le '+d.toLocaleDateString('fr-FR',{day:'numeric',month:'long',year:'numeric'});}
+
+async function saveIntervention(){
+  const equip=document.getElementById('m-equip').value,type=document.getElementById('m-type').value;
+  const desc=document.getElementById('m-desc').value||'Intervention',cout=parseFloat(document.getElementById('m-cout').value)||0;
+  const date=document.getElementById('m-date').value;
+  const d=new Date(date);d.setDate(d.getDate()+rJours);
+  const{error}=await sb.from('interventions').insert({date_intervention:date,zone:equip.split('—')[0].trim(),equipement:equip,type_intervention:type,description:desc,prochaine_echeance:d.toISOString().slice(0,10),rappel_jours:rJours,cout});
+  if(error){toast('❌ Erreur');return;}
+  document.getElementById('modal-intervention').classList.remove('open');
+  await loadInterventions();toast('✅ Intervention enregistrée !');
+}
+
+// ── ACHATS ──
+let achats=[];
+async function loadAchats(){const{data}=await sb.from('achats').select('*').order('created_at',{ascending:false});if(!data)return;achats=data.map(a=>({id:a.id,nom:a.nom,urgence:a.urgence,done:a.fait}));renderAchats();}
+const urgIcon={urgent:'🔴',normal:'🔵',stock:'🟡'};
+const urgCss={urgent:'background:var(--red-light);color:var(--red)',normal:'background:var(--brand-light);color:var(--brand)',stock:'background:#fef3c7;color:#92400e'};
+function renderAchats(){document.getElementById('achats-view').innerHTML=achats.map(a=>`
+  <div class="achat-row">
+    <div class="achat-check ${a.done?'checked':''}" onclick="toggleAchat('${a.id}')">${a.done?'✓':''}</div>
+    <div style="flex:1;font-size:13px;font-weight:500;${a.done?'text-decoration:line-through;color:var(--muted)':''}">${a.nom}</div>
+    <span style="font-size:11px;font-weight:600;padding:2px 8px;border-radius:20px;${urgCss[a.urgence]}">${urgIcon[a.urgence]}</span>
+    <span onclick="delAchat('${a.id}')" style="color:var(--muted);cursor:pointer;font-size:20px;padding:0 4px">×</span>
+  </div>`).join('');}
+async function addAchat(){const inp=document.getElementById('new-achat'),urg=document.getElementById('new-urg'),nom=inp.value.trim();if(!nom)return;const{data,error}=await sb.from('achats').insert({nom,urgence:urg.value}).select().single();if(error){toast('❌ Erreur');return;}achats.push({id:data.id,nom,urgence:urg.value,done:false});inp.value='';renderAchats();toast('✅ Ajouté !');}
+async function toggleAchat(id){const a=achats.find(a=>a.id===id);if(!a)return;await sb.from('achats').update({fait:!a.done,fait_le:!a.done?new Date().toISOString():null}).eq('id',id);a.done=!a.done;renderAchats();}
+async function delAchat(id){await sb.from('achats').delete().eq('id',id);achats=achats.filter(a=>a.id!==id);renderAchats();toast('🗑️ Supprimé');}
+
+// ── PROMOS ──
+const PFXS=['WASH','CLEAN','SHINE','AQUA','STAR'];
+function genCode(){const v=document.getElementById('p-val').value;document.getElementById('promo-preview').textContent=v.length>2?PFXS[Math.floor(Math.random()*PFXS.length)]+Math.floor(Math.random()*90+10):'WASH——';}
+async function loadPromos(){const{data}=await sb.from('promos').select('*').order('created_at',{ascending:false});if(!data)return;document.getElementById('promos-list').innerHTML=data.length?data.map(p=>`<div class="list-row"><div style="flex:1"><div style="font-family:'Clash Display',sans-serif;font-size:17px;color:var(--brand)">${p.code}</div><div style="font-size:12px;color:var(--muted);margin-top:2px">${p.description}</div></div><div style="text-align:right"><div style="font-family:'Clash Display',sans-serif;font-size:18px">${p.nb_utilises||0}</div><div style="font-size:11px;color:var(--muted)">util.</div></div></div>`).join(''):'<div style="padding:20px;text-align:center;color:var(--muted)">Aucun code</div>';}
+async function sendPromo(){const code=document.getElementById('promo-preview').textContent;if(code==='WASH——'){toast('⚠️ Remplissez la description');return;}await sb.from('promos').insert({code,description:document.getElementById('p-val').value,type:'remise',actif:true});await loadPromos();document.getElementById('p-val').value='';document.getElementById('promo-preview').textContent='WASH——';toast(`🚀 Code ${code} créé !`);}
+
+// ── QR CODES ──
+function initQR(){
+  const url='https://washcrm-production.up.railway.app/client';
+  try{new QRCode(document.getElementById('qr-portique'),{text:url+'?borne=portique',width:180,height:180,colorDark:'#111827',colorLight:'#ffffff',correctLevel:QRCode.CorrectLevel.M});}catch(e){}
+  try{new QRCode(document.getElementById('qr-dj3'),{text:url+'?borne=dj3',width:180,height:180,colorDark:'#111827',colorLight:'#ffffff',correctLevel:QRCode.CorrectLevel.M});}catch(e){}
+}
+
+window.addEventListener('load', async () => {
+  try {
+    if(!sb) { sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY); }
+    document.getElementById('m-date').value=new Date().toISOString().slice(0,10);
+    document.getElementById('m-date').addEventListener('change',()=>{const d=new Date(document.getElementById('m-date').value);d.setDate(d.getDate()+rJours);document.getElementById('r-preview').textContent='📅 Rappel le '+d.toLocaleDateString('fr-FR',{day:'numeric',month:'long',year:'numeric'});});
+    toast('⏳ Chargement…');
+    await Promise.all([
+      loadDashboard().catch(e=>console.error('Dashboard:',e)),
+      loadClients().catch(e=>console.error('Clients:',e)),
+      loadPannes().catch(e=>console.error('Pannes:',e)),
+      loadAchats().catch(e=>console.error('Achats:',e)),
+      loadInterventions().catch(e=>console.error('Interventions:',e)),
+      loadPromos().catch(e=>console.error('Promos:',e)),
+    ]);
+    try { renderEntretien(); } catch(e) { console.error('renderEntretien:',e); }
+    try { initQR(); } catch(e) { console.error('initQR:',e); }
+    toast('✅ WashCRM connecté !');
+  } catch(e) {
+    console.error('Init error:',e);
+    toast('❌ Erreur: '+e.message);
+  }
+});
+</script>
+</body>
+</html>
