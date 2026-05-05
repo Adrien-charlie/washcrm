@@ -1,0 +1,1144 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Lavage Auto des Vérités">
+<meta name="theme-color" content="#0a0f23">
+<link rel="manifest" href="/manifest.json">
+<link rel="apple-touch-icon" href="/icon-512.png">
+<link rel="apple-touch-icon" sizes="192x192" href="/icon-192.png">
+<link rel="apple-touch-icon" sizes="512x512" href="/icon-512.png">
+<title>Lavage Auto des Vérités — Mon App</title>
+<link href="https://fonts.googleapis.com/css2?family=Clash+Display:wght@400;500;600;700&family=Cabinet+Grotesk:wght@300;400;500;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+:root {
+  --brand:#1a56db; --brand-dark:#0f3a9e; --brand-light:#e8f0fe;
+  --teal:#0d9488; --gold:#f59e0b; --bg:#f8f7f5; --white:#ffffff;
+  --text:#111827; --muted:#6b7280; --border:#e5e7eb;
+  --green:#16a34a; --green-light:#f0fdf4;
+  --red:#dc2626; --red-light:#fef2f2;
+  --orange:#ea580c; --orange-light:#fff7ed;
+  --radius:20px; --radius-sm:12px;
+  --shadow:0 2px 12px rgba(0,0,0,0.07);
+  --shadow-lg:0 12px 40px rgba(0,0,0,0.14);
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Cabinet Grotesk',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;max-width:430px;margin:0 auto;overflow-x:hidden}
+.screen{display:none;min-height:100vh;flex-direction:column;animation:fadeIn 0.3s ease}
+.screen.active{display:flex}
+@keyframes fadeIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+
+/* ── BOTTOM NAV ── */
+.bottom-nav{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:430px;background:white;border-top:1px solid var(--border);display:flex;padding:8px 0 20px;box-shadow:0 -4px 20px rgba(0,0,0,0.08);z-index:100}
+.nav-tab{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;padding:6px 0;cursor:pointer;border:none;background:transparent;font-family:'Cabinet Grotesk',sans-serif}
+.nav-tab-icon{font-size:20px}
+.nav-tab-label{font-size:9px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.5px}
+.nav-tab.active .nav-tab-label{color:var(--brand)}
+
+/* ── HEADERS ── */
+.screen-header{background:white;padding:52px 20px 16px;border-bottom:1px solid var(--border);position:sticky;top:0;z-index:10}
+.screen-header-title{font-family:'Clash Display',sans-serif;font-size:22px;font-weight:700}
+.screen-body{padding:20px;padding-bottom:90px}
+.back-btn{display:flex;align-items:center;gap:6px;font-size:14px;color:rgba(255,255,255,0.8);cursor:pointer;margin-bottom:20px;background:none;border:none;font-family:'Cabinet Grotesk',sans-serif}
+
+/* ── FORMS ── */
+.form-group{display:flex;flex-direction:column;gap:6px}
+.form-label{font-size:13px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.8px}
+.form-input{padding:14px 16px;border-radius:var(--radius-sm);border:2px solid var(--border);background:var(--bg);font-family:'Cabinet Grotesk',sans-serif;font-size:15px;color:var(--text);outline:none;transition:border-color 0.2s;width:100%}
+.form-input:focus{border-color:var(--brand);background:white}
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.field-ta{width:100%;padding:12px 16px;border:2px solid var(--border);border-radius:var(--radius-sm);font-family:'Cabinet Grotesk',sans-serif;font-size:14px;color:var(--text);background:var(--white);outline:none;resize:none;min-height:80px;transition:border-color 0.2s}
+.field-ta:focus{border-color:var(--brand)}
+
+/* ── BUTTONS ── */
+.btn-brand{width:100%;padding:16px;border-radius:var(--radius-sm);background:var(--brand);color:white;border:none;font-family:'Cabinet Grotesk',sans-serif;font-size:16px;font-weight:700;cursor:pointer;transition:all 0.2s;box-shadow:0 4px 16px rgba(26,86,219,0.35)}
+.btn-brand:hover{background:var(--brand-dark);transform:translateY(-1px)}
+.btn-white{width:100%;padding:16px;border-radius:var(--radius-sm);background:white;color:var(--brand);border:none;font-family:'Cabinet Grotesk',sans-serif;font-size:16px;font-weight:700;cursor:pointer;transition:all 0.2s;box-shadow:0 4px 20px rgba(0,0,0,0.2)}
+.btn-outline{width:100%;padding:14px;border-radius:var(--radius-sm);background:transparent;color:rgba(255,255,255,0.8);border:1.5px solid rgba(255,255,255,0.25);font-family:'Cabinet Grotesk',sans-serif;font-size:15px;font-weight:500;cursor:pointer;transition:all 0.2s;margin-top:10px}
+.use-cashback-btn{width:100%;padding:14px;border-radius:var(--radius-sm);background:linear-gradient(135deg,var(--brand),var(--brand-dark));color:white;border:none;font-family:'Cabinet Grotesk',sans-serif;font-size:15px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;box-shadow:0 4px 16px rgba(26,86,219,0.35);margin-bottom:10px}
+.use-cashback-btn:disabled{opacity:0.5;cursor:not-allowed}
+.report-btn{width:100%;padding:16px;border-radius:var(--radius-sm);background:linear-gradient(135deg,var(--red),#991b1b);color:white;border:none;font-family:'Clash Display',sans-serif;font-size:14px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;box-shadow:0 4px 16px rgba(220,38,38,0.35)}
+
+/* ── GDPR ── */
+.gdpr-box{display:flex;gap:12px;align-items:flex-start;padding:14px;border-radius:var(--radius-sm);background:var(--brand-light);border:1px solid #c3d4f8}
+.gdpr-box input{margin-top:2px;accent-color:var(--brand);flex-shrink:0}
+.gdpr-text{font-size:12px;color:var(--muted);line-height:1.5}
+
+/* ── GEO ── */
+.geo-notif-banner{background:linear-gradient(135deg,#1d4ed8,#2563eb);border-radius:var(--radius-sm);padding:16px;display:flex;align-items:center;gap:12px;color:white;cursor:pointer}
+.geo-notif-title{font-size:14px;font-weight:700}
+.geo-notif-sub{font-size:12px;color:rgba(255,255,255,0.7);margin-top:2px}
+.geo-toggle{width:44px;height:26px;background:rgba(255,255,255,0.3);border-radius:13px;position:relative;flex-shrink:0;transition:background 0.2s}
+.geo-toggle.on{background:#34d399}
+.geo-toggle::after{content:'';position:absolute;top:3px;left:3px;width:20px;height:20px;border-radius:50%;background:white;transition:transform 0.2s;box-shadow:0 1px 4px rgba(0,0,0,0.2)}
+.geo-toggle.on::after{transform:translateX(18px)}
+
+/* ── SECTIONS ── */
+.section-block{background:var(--white);border-radius:var(--radius);padding:20px;margin-bottom:14px;box-shadow:var(--shadow)}
+.section-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px}
+.section-title{font-family:'Clash Display',sans-serif;font-size:16px;font-weight:600}
+.section-link{font-size:13px;color:var(--brand);font-weight:600;cursor:pointer}
+
+/* ── HISTORIQUE ── */
+.history-list{display:flex;flex-direction:column;gap:2px}
+.history-row{display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid var(--border)}
+.history-row:last-child{border-bottom:none}
+.h-icon{width:36px;height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0}
+.h-icon.wash{background:var(--brand-light)}
+.h-icon.cash{background:var(--green-light)}
+.h-icon.promo{background:#fef3c7}
+.h-title{font-size:14px;font-weight:500}
+.h-date{font-size:11px;color:var(--muted);margin-top:2px}
+.h-pts{margin-left:auto;font-family:'Clash Display',sans-serif;font-size:16px;font-weight:600}
+.h-pts.plus{color:var(--teal)}
+.h-pts.used{color:var(--brand)}
+.h-pts.neutral{color:var(--muted)}
+
+/* ── PROMOS ── */
+.promo-card{display:flex;align-items:center;gap:14px;padding:14px 16px;border-radius:var(--radius-sm);border:1.5px solid var(--border);cursor:pointer;transition:all 0.2s;position:relative;overflow:hidden;margin-bottom:10px}
+.promo-card::before{content:'';position:absolute;left:0;top:0;bottom:0;width:4px;background:var(--brand);border-radius:2px 0 0 2px}
+.promo-card:hover{border-color:var(--brand);box-shadow:var(--shadow)}
+.promo-icon{width:42px;height:42px;border-radius:var(--radius-sm);background:var(--brand-light);display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0}
+.promo-code{font-family:'Clash Display',sans-serif;font-size:18px;font-weight:600;color:var(--brand)}
+.promo-desc{font-size:12px;color:var(--muted);margin-top:2px}
+.promo-badge-sm{margin-left:auto;padding:4px 10px;border-radius:20px;font-size:11px;font-weight:700;flex-shrink:0}
+.pb-active{background:#dcfce7;color:#15803d}
+.pb-expire{background:#fef3c7;color:#92400e}
+.pb-used{background:var(--bg);color:var(--muted)}
+
+/* ── PROFIL ── */
+.profile-hero{background:linear-gradient(135deg,#374151,#1f2937);padding:52px 24px 36px;text-align:center;color:white}
+.profile-avatar{width:72px;height:72px;border-radius:50%;background:var(--brand);margin:0 auto 12px;display:flex;align-items:center;justify-content:center;font-family:'Clash Display',sans-serif;font-size:28px;font-weight:700;border:3px solid rgba(255,255,255,0.3)}
+.profile-name{font-family:'Clash Display',sans-serif;font-size:22px;font-weight:700}
+.profile-since{font-size:13px;color:rgba(255,255,255,0.6);margin-top:4px}
+.profile-list{background:white;border-radius:var(--radius);overflow:hidden;box-shadow:var(--shadow)}
+.profile-row{display:flex;align-items:center;gap:14px;padding:16px 20px;border-bottom:1px solid var(--border);cursor:pointer;transition:background 0.15s}
+.profile-row:last-child{border-bottom:none}
+.profile-row:hover{background:var(--bg)}
+.profile-row-icon{width:36px;height:36px;border-radius:10px;background:var(--brand-light);display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0}
+.profile-row-label{font-size:14px;font-weight:500;flex:1}
+.profile-row-val{font-size:13px;color:var(--muted)}
+.profile-row-arrow{color:var(--muted);font-size:16px}
+
+/* ── TICKETS ── */
+.ticket-card{background:white;border-radius:var(--radius);border:1px solid var(--border);overflow:hidden;box-shadow:var(--shadow);cursor:pointer;transition:all 0.2s;margin-bottom:10px}
+.ticket-card:hover{box-shadow:var(--shadow-lg);transform:translateY(-1px)}
+.ticket-card-header{display:flex;align-items:center;gap:14px;padding:16px 18px}
+.ticket-icon{width:44px;height:44px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0}
+.ticket-icon.portique{background:#dbeafe}
+.ticket-icon.jetons{background:#fef9c3}
+.ticket-info{flex:1}
+.ticket-prog{font-size:14px;font-weight:600}
+.ticket-date-txt{font-size:12px;color:var(--muted);margin-top:2px}
+.ticket-price{font-family:'Clash Display',sans-serif;font-size:20px;font-weight:600}
+.ticket-cashback{font-size:11px;color:var(--green);font-weight:600;margin-top:2px}
+.ticket-footer{display:flex;align-items:center;justify-content:space-between;padding:10px 18px;background:var(--bg);border-top:1px solid var(--border)}
+.ticket-ref{font-family:'Courier New',monospace;font-size:11px;color:var(--muted)}
+.tac-btn{padding:5px 12px;border-radius:6px;border:1px solid var(--border);background:white;font-size:12px;font-weight:500;cursor:pointer;font-family:'Cabinet Grotesk',sans-serif;color:var(--text);transition:all 0.15s;margin-left:6px}
+.tac-btn:hover{background:var(--brand);color:white;border-color:var(--brand)}
+
+/* ── TICKET DÉTAIL ── */
+.ticket-detail-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:200;align-items:flex-end;justify-content:center;backdrop-filter:blur(4px)}
+.ticket-detail-overlay.open{display:flex}
+.ticket-detail{background:white;border-radius:24px 24px 0 0;width:100%;max-width:430px;max-height:92vh;overflow-y:auto;animation:slideUp 0.3s ease}
+@keyframes slideUp{from{transform:translateY(100%)}to{transform:translateY(0)}}
+.receipt{padding:24px 24px 0}
+.receipt-drag{width:40px;height:4px;background:var(--border);border-radius:2px;margin:0 auto 20px}
+.receipt-header{text-align:center;margin-bottom:20px;padding-bottom:16px;border-bottom:2px dashed var(--border)}
+.receipt-logo{font-family:'Clash Display',sans-serif;font-size:20px;margin-bottom:4px}
+.receipt-station{font-size:12px;color:var(--muted);line-height:1.6}
+.receipt-line{display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #f0ede8;font-size:13px}
+.receipt-line:last-child{border-bottom:none}
+.rl-label{color:var(--muted)}
+.rl-value{font-weight:600}
+.rl-value.mono{font-family:'Courier New',monospace;font-size:12px}
+.receipt-total{margin:16px 0;padding:14px;background:var(--bg);border-radius:var(--radius-sm)}
+.receipt-total-line{display:flex;justify-content:space-between;font-size:13px;margin-bottom:6px}
+.receipt-total-line.main{font-size:18px;font-weight:700;margin-top:8px;padding-top:8px;border-top:1px solid var(--border)}
+.receipt-cashback-box{background:var(--green-light);border:1px solid #bbf7d0;border-radius:var(--radius-sm);padding:14px 16px;margin:16px 0;display:flex;align-items:center;gap:12px}
+.rc-label{font-size:12px;color:var(--green);flex:1}
+.rc-label strong{display:block;font-size:14px}
+.rc-amount{font-family:'Clash Display',sans-serif;font-size:22px;color:var(--green)}
+.receipt-solde{background:var(--brand-light);border-radius:var(--radius-sm);padding:12px 16px;display:flex;justify-content:space-between;align-items:center;margin-bottom:16px}
+.receipt-legal{padding:16px;border-top:2px dashed var(--border);font-size:10px;color:var(--muted);line-height:1.7;text-align:center}
+.receipt-actions{position:sticky;bottom:0;background:white;padding:16px 20px 32px;border-top:1px solid var(--border);display:flex;gap:10px}
+.btn-dl{flex:1;padding:13px;border-radius:var(--radius-sm);background:var(--text);color:white;border:none;font-family:'Cabinet Grotesk',sans-serif;font-size:14px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px}
+.btn-share{padding:13px 16px;border-radius:var(--radius-sm);background:var(--bg);color:var(--text);border:1px solid var(--border);font-family:'Cabinet Grotesk',sans-serif;font-size:14px;font-weight:600;cursor:pointer}
+.btn-close-receipt{padding:13px 16px;border-radius:var(--radius-sm);background:var(--bg);color:var(--muted);border:1px solid var(--border);font-family:'Cabinet Grotesk',sans-serif;font-size:14px;cursor:pointer}
+
+/* ── SCAN ── */
+#screen-scan{background:linear-gradient(160deg,#0a0f1e 0%,#0f2a6e 50%,#1a56db 100%);justify-content:space-between;padding:56px 24px 100px;position:relative;overflow:hidden}
+#screen-scan::before{content:'';position:absolute;top:-100px;right:-100px;width:400px;height:400px;border-radius:50%;background:radial-gradient(circle,rgba(96,165,250,0.15) 0%,transparent 70%)}
+.scan-header{position:relative;z-index:1;text-align:center}
+.scan-station{font-family:'Clash Display',sans-serif;font-size:11px;font-weight:700;letter-spacing:3px;color:rgba(255,255,255,0.5);text-transform:uppercase;margin-bottom:10px}
+.scan-title{font-family:'Clash Display',sans-serif;font-size:24px;font-weight:700;color:white;line-height:1.2;margin-bottom:6px}
+.scan-sub{font-size:13px;color:rgba(255,255,255,0.6);line-height:1.5}
+.scan-zone{position:relative;z-index:1;display:flex;flex-direction:column;align-items:center;gap:20px}
+.scan-ring{width:190px;height:190px;border-radius:24px;position:relative;cursor:pointer}
+.scan-ring-inner{width:100%;height:100%;border-radius:20px;background:rgba(255,255,255,0.08);backdrop-filter:blur(8px);border:1.5px solid rgba(255,255,255,0.15);display:flex;align-items:center;justify-content:center;position:relative;overflow:hidden;transition:all 0.3s}
+.scan-ring-inner:hover{background:rgba(255,255,255,0.14);transform:scale(1.02)}
+.scan-line{position:absolute;left:12px;right:12px;height:2px;background:linear-gradient(90deg,transparent,#60a5fa,#34d399,transparent);animation:scanAnim 2.5s ease-in-out infinite;border-radius:2px}
+@keyframes scanAnim{0%,100%{top:15%;opacity:0.6}50%{top:80%;opacity:1}}
+.scan-pulse{position:absolute;inset:-8px;border-radius:28px;border:1.5px solid rgba(96,165,250,0.3);animation:pulseAnim 2s ease-in-out infinite}
+@keyframes pulseAnim{0%,100%{opacity:0.3;transform:scale(1)}50%{opacity:0.7;transform:scale(1.03)}}
+.corner{position:absolute;width:18px;height:18px}
+.corner.tl{top:8px;left:8px;border-top:3px solid #60a5fa;border-left:3px solid #60a5fa;border-radius:3px 0 0 0}
+.corner.tr{top:8px;right:8px;border-top:3px solid #60a5fa;border-right:3px solid #60a5fa;border-radius:0 3px 0 0}
+.corner.bl{bottom:8px;left:8px;border-bottom:3px solid #60a5fa;border-left:3px solid #60a5fa;border-radius:0 0 0 3px}
+.corner.br{bottom:8px;right:8px;border-bottom:3px solid #60a5fa;border-right:3px solid #60a5fa;border-radius:0 0 3px 0}
+.scan-hint{text-align:center;color:rgba(255,255,255,0.7);font-size:13px;line-height:1.6}
+.scan-hint strong{color:white;display:block;font-size:15px;font-weight:600;margin-bottom:4px}
+.borne-label{font-size:11px;color:rgba(255,255,255,0.5);text-transform:uppercase;letter-spacing:1.5px;margin-bottom:8px;text-align:center}
+.borne-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.borne-opt{background:rgba(255,255,255,0.07);border:1.5px solid rgba(255,255,255,0.1);border-radius:var(--radius-sm);padding:10px 6px;text-align:center;cursor:pointer;transition:all 0.2s}
+.borne-opt.selected{background:rgba(96,165,250,0.2);border-color:#60a5fa}
+.borne-opt-icon{font-size:18px;display:block;margin-bottom:4px}
+.borne-opt-label{font-size:10px;color:rgba(255,255,255,0.7);font-weight:500}
+.scan-btn{width:100%;padding:16px;border-radius:var(--radius-sm);background:white;color:var(--brand);border:none;font-family:'Clash Display',sans-serif;font-size:14px;font-weight:700;cursor:pointer;transition:all 0.2s;box-shadow:0 8px 24px rgba(0,0,0,0.3);display:flex;align-items:center;justify-content:center;gap:8px}
+.scan-btn:hover{transform:translateY(-2px)}
+.scan-success{display:none;position:fixed;inset:0;background:rgba(0,196,125,0.95);z-index:300;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:32px}
+.scan-success.show{display:flex;animation:fadeIn 0.4s ease}
+.ss-icon{font-size:80px;margin-bottom:16px}
+.ss-title{font-family:'Clash Display',sans-serif;font-size:24px;font-weight:700;color:white;margin-bottom:8px}
+.ss-sub{font-size:14px;color:rgba(255,255,255,0.85);line-height:1.6;margin-bottom:24px}
+.ss-card{background:rgba(255,255,255,0.2);border-radius:var(--radius);padding:20px 28px;margin-bottom:20px;width:100%;border:1px solid rgba(255,255,255,0.3)}
+.ss-detail{font-size:13px;color:rgba(255,255,255,0.8);margin-bottom:6px;display:flex;justify-content:space-between}
+.ss-detail strong{color:white}
+.ss-timer{font-family:'Clash Display',sans-serif;font-size:40px;font-weight:700;color:white}
+.ss-timer-label{font-size:12px;color:rgba(255,255,255,0.7);margin-top:4px}
+.ss-btn{background:white;color:#00c47d;border:none;padding:14px 32px;border-radius:var(--radius-sm);font-family:'Clash Display',sans-serif;font-size:14px;font-weight:700;cursor:pointer}
+
+/* ── PANNE ── */
+.panne-header{background:linear-gradient(135deg,#dc2626,#991b1b);padding:52px 24px 28px;color:white}
+.panne-header-title{font-family:'Clash Display',sans-serif;font-size:22px;font-weight:700;margin-bottom:6px}
+.panne-header-sub{font-size:13px;color:rgba(255,255,255,0.75);line-height:1.5}
+.appareil-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:20px}
+.appareil-opt{background:var(--white);border:2px solid var(--border);border-radius:var(--radius-sm);padding:16px 12px;text-align:center;cursor:pointer;transition:all 0.2s}
+.appareil-opt.selected{border-color:var(--red);background:var(--red-light)}
+.appareil-opt-icon{font-size:28px;display:block;margin-bottom:6px}
+.appareil-opt-name{font-size:12px;font-weight:600}
+.appareil-opt-num{font-size:11px;color:var(--muted);margin-top:2px}
+.prob-list{display:flex;flex-direction:column;gap:8px;margin-bottom:20px}
+.prob-opt{display:flex;align-items:center;gap:12px;padding:14px 16px;border-radius:var(--radius-sm);border:2px solid var(--border);background:var(--white);cursor:pointer;transition:all 0.15s}
+.prob-opt.selected{border-color:var(--orange);background:var(--orange-light)}
+.prob-icon{font-size:22px;flex-shrink:0}
+.prob-label{font-size:14px;font-weight:500}
+.prob-sub{font-size:12px;color:var(--muted);margin-top:2px}
+.photo-zone{border:2px dashed var(--border);border-radius:var(--radius-sm);padding:24px;text-align:center;cursor:pointer;transition:all 0.2s;background:var(--white);margin-bottom:16px}
+.photo-zone:hover{border-color:var(--orange);background:var(--orange-light)}
+.panne-confirm{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:200;align-items:flex-end;justify-content:center;backdrop-filter:blur(4px)}
+.panne-confirm.show{display:flex}
+.pc-card{background:var(--white);border-radius:24px 24px 0 0;padding:32px 28px 40px;width:100%;max-width:430px;text-align:center;animation:slideUp 0.3s ease}
+.pc-icon{font-size:56px;margin-bottom:16px}
+.pc-title{font-family:'Clash Display',sans-serif;font-size:20px;font-weight:700;margin-bottom:8px}
+.pc-sub{font-size:14px;color:var(--muted);line-height:1.6;margin-bottom:20px}
+.pc-ref{font-family:'Courier New',monospace;font-size:12px;background:var(--bg);padding:8px 16px;border-radius:8px;color:var(--muted);margin-bottom:20px}
+.pc-btn{width:100%;padding:14px;border-radius:var(--radius-sm);background:var(--text);color:white;border:none;font-family:'Clash Display',sans-serif;font-size:14px;font-weight:700;cursor:pointer}
+
+/* ── CASHBACK HERO ── */
+.fidelity-hero{background:linear-gradient(135deg,var(--brand) 0%,#1e40af 60%,var(--brand-dark) 100%);padding:52px 24px 80px;position:relative;overflow:hidden}
+.fidelity-hero::before{content:'';position:absolute;top:-60px;right:-60px;width:220px;height:220px;border-radius:50%;background:rgba(255,255,255,0.06)}
+.hero-greeting{font-size:14px;color:rgba(255,255,255,0.7);margin-bottom:4px;position:relative;z-index:1}
+.hero-name{font-family:'Clash Display',sans-serif;font-size:26px;font-weight:700;color:white;position:relative;z-index:1;margin-bottom:28px}
+.loyalty-card{background:rgba(255,255,255,0.12);backdrop-filter:blur(16px);border:1px solid rgba(255,255,255,0.2);border-radius:20px;padding:22px;position:relative;z-index:1;margin-bottom:-50px;box-shadow:0 20px 60px rgba(0,0,0,0.25)}
+.card-top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:16px}
+.card-brand{font-family:'Clash Display',sans-serif;font-size:13px;font-weight:700;color:white;line-height:1.3}
+.card-tier-badge{padding:4px 12px;border-radius:20px;font-size:11px;font-weight:700;background:var(--gold);color:white}
+.cashback-display{margin-bottom:14px}
+.cashback-row{display:flex;align-items:baseline;gap:6px}
+.cashback-val{font-family:'Clash Display',sans-serif;font-size:48px;font-weight:700;color:white;line-height:1}
+.cashback-currency{font-size:24px;color:rgba(255,255,255,0.8);font-weight:700}
+.cashback-label-small{font-size:13px;color:rgba(255,255,255,0.6);margin-top:4px}
+.progress-bar{height:6px;background:rgba(255,255,255,0.2);border-radius:3px;overflow:hidden;margin-bottom:4px}
+.progress-fill{height:100%;background:linear-gradient(90deg,#60a5fa,#34d399);border-radius:3px;transition:width 1.2s ease}
+.progress-meta{display:flex;justify-content:space-between;font-size:11px;color:rgba(255,255,255,0.6)}
+.cashback-rate-row{background:rgba(255,255,255,0.15);border-radius:10px;padding:8px 12px;display:flex;align-items:center;gap:8px;margin-top:10px}
+.cashback-rate-text{font-size:12px;color:rgba(255,255,255,0.8);flex:1}
+.cashback-rate-pct{font-family:'Clash Display',sans-serif;font-size:18px;font-weight:700;color:white}
+.home-content{padding:66px 20px 0;padding-bottom:90px}
+.quick-actions{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px}
+.qa-btn{background:var(--white);border-radius:var(--radius-sm);padding:16px;display:flex;flex-direction:column;align-items:center;gap:8px;box-shadow:var(--shadow);cursor:pointer;border:1.5px solid var(--border);transition:all 0.2s;text-align:center}
+.qa-btn:hover{border-color:var(--brand);transform:translateY(-2px)}
+.qa-icon{font-size:24px}
+.qa-label{font-size:13px;font-weight:600}
+.qa-sub{font-size:11px;color:var(--muted)}
+.cashback-info-box{background:var(--brand-light);border-radius:var(--radius-sm);padding:12px 14px;font-size:12px;color:var(--brand);line-height:1.6}
+.cashback-info-box strong{display:block;font-size:13px;margin-bottom:4px}
+.where-item{display:flex;align-items:center;gap:12px;padding:12px;background:var(--bg);border-radius:10px}
+.where-item-icon{font-size:24px}
+.where-item-title{font-size:14px;font-weight:600}
+.where-item-sub{font-size:12px;color:var(--muted)}
+.cashback-hero-inner{background:linear-gradient(135deg,var(--brand),var(--brand-dark));border-radius:20px;padding:28px;color:white;text-align:center;margin-bottom:20px}
+.cashback-big{font-family:'Clash Display',sans-serif;font-size:56px;font-weight:700;line-height:1}
+
+/* TOAST */
+.toast{position:fixed;bottom:100px;left:50%;transform:translateX(-50%) translateY(20px);background:var(--text);color:white;padding:12px 20px;border-radius:40px;font-size:14px;font-weight:500;white-space:nowrap;box-shadow:var(--shadow-lg);opacity:0;transition:all 0.3s cubic-bezier(0.34,1.56,0.64,1);z-index:999;max-width:90%;text-align:center}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+</style>
+</head>
+<body>
+
+<!-- ════ ACCUEIL ════ -->
+<div class="screen active" id="screen-welcome" style="background:linear-gradient(160deg,#1a56db 0%,#0f3a9e 50%,#0a2464 100%);align-items:center;justify-content:space-between;padding:60px 28px 40px;position:relative;overflow:hidden">
+  <div style="position:absolute;top:-80px;right:-80px;width:280px;height:280px;border-radius:50%;background:rgba(255,255,255,0.05)"></div>
+  <div style="text-align:center;position:relative;z-index:1;width:100%">
+    <div style="font-family:'Clash Display',sans-serif;font-size:24px;font-weight:700;color:white;line-height:1.2;margin-bottom:4px">Lavage Auto<br><span style="color:#60a5fa">des Vérités</span></div>
+    <div style="font-size:13px;color:rgba(255,255,255,0.6)">Votre station de lavage · Lapalisse</div>
+  </div>
+  <div style="position:relative;z-index:1;display:flex;flex-direction:column;align-items:center;gap:20px">
+    <div onclick="goTo('screen-home')" style="width:180px;height:180px;background:white;border-radius:20px;display:flex;align-items:center;justify-content:center;box-shadow:0 20px 60px rgba(0,0,0,0.3);cursor:pointer;position:relative;overflow:hidden">
+      <div style="font-size:64px">📱</div>
+      <div style="position:absolute;left:16px;right:16px;height:2px;background:linear-gradient(90deg,transparent,#1a56db,transparent);top:30%;animation:scanAnim 2s ease-in-out infinite"></div>
+    </div>
+    <div style="text-align:center;color:rgba(255,255,255,0.8);font-size:13px;line-height:1.5"><strong style="color:white;display:block;font-size:15px;margin-bottom:4px">Scannez le QR code à la borne</strong>Ou appuyez pour accéder à votre espace</div>
+  </div>
+  <div style="position:relative;z-index:1;width:100%">
+    <button class="btn-white" onclick="goTo('screen-register')">Créer mon compte · 5% cashback 💶</button>
+    <button class="btn-outline" onclick="goTo('screen-login')">J'ai déjà un compte</button>
+    <div style="text-align:center;color:rgba(255,255,255,0.5);font-size:13px;margin-top:14px">Déjà membre ? <a onclick="goTo('screen-login')" style="color:white;font-weight:600;cursor:pointer;text-decoration:underline">Me connecter</a></div>
+  </div>
+</div>
+
+<!-- ════ CONNEXION ════ -->
+<div class="screen" id="screen-login" style="background:white">
+  <div style="background:linear-gradient(135deg,var(--brand),var(--brand-dark));padding:52px 28px 32px;color:white">
+    <button class="back-btn" onclick="goTo('screen-welcome')">← Retour</button>
+    <div style="font-family:'Clash Display',sans-serif;font-size:28px;font-weight:700">Bon retour !</div>
+    <div style="font-size:14px;color:rgba(255,255,255,0.7);margin-top:6px">Connectez-vous avec votre numéro de téléphone</div>
+  </div>
+  <div style="padding:32px 28px;display:flex;flex-direction:column;gap:16px">
+    <div class="form-group">
+      <label class="form-label">Votre numéro de téléphone</label>
+      <input class="form-input" type="tel" placeholder="06 12 34 56 78" id="login-tel">
+    </div>
+    <button class="btn-brand" onclick="loginClient()">Me connecter</button>
+    <div style="text-align:center;font-size:13px;color:var(--muted)">Pas encore de compte ? <a onclick="goTo('screen-register')" style="color:var(--brand);font-weight:600;cursor:pointer">Créer mon compte</a></div>
+  </div>
+</div>
+
+<!-- ════ INSCRIPTION ════ -->
+<div class="screen" id="screen-register" style="background:white">
+  <div style="background:linear-gradient(135deg,var(--brand),var(--brand-dark));padding:52px 28px 32px;color:white">
+    <button class="back-btn" onclick="goTo('screen-welcome')">← Retour</button>
+    <div style="font-family:'Clash Display',sans-serif;font-size:28px;font-weight:700">Rejoignez-nous !</div>
+    <div style="font-size:14px;color:rgba(255,255,255,0.7);margin-top:6px">5% cashback · Utilisable dès 2€</div>
+  </div>
+  <div style="padding:28px;display:flex;flex-direction:column;gap:16px;padding-bottom:40px">
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">Prénom</label><input class="form-input" type="text" placeholder="Marie" id="inp-prenom"></div>
+      <div class="form-group"><label class="form-label">Nom</label><input class="form-input" type="text" placeholder="Dupont" id="inp-nom"></div>
+    </div>
+    <div class="form-group"><label class="form-label">Téléphone</label><input class="form-input" type="tel" placeholder="06 12 34 56 78"></div>
+    <div class="form-group"><label class="form-label">Email (optionnel)</label><input class="form-input" type="email" placeholder="marie@exemple.fr"></div>
+    <div class="form-group"><label class="form-label">Date de naissance</label><input class="form-input" type="date"></div>
+    <div class="gdpr-box"><input type="checkbox" checked><div class="gdpr-text">J'accepte de recevoir des offres par SMS/email. Données utilisées uniquement par le Lavage Auto des Vérités.</div></div>
+    <div class="geo-notif-banner" onclick="toggleGeo(this)">
+      <div style="font-size:24px">📍</div>
+      <div><div class="geo-notif-title">Notifications de proximité</div><div class="geo-notif-sub">Offre quand vous êtes près de la station</div></div>
+      <div class="geo-toggle on"></div>
+    </div>
+    <button class="btn-brand" onclick="register()">Créer mon compte 🎉</button>
+  </div>
+</div>
+
+<!-- ════ ACCUEIL CLIENT ════ -->
+<div class="screen" id="screen-home">
+  <div class="fidelity-hero">
+    <div class="hero-greeting">Bonjour 👋</div>
+    <div class="hero-name" id="hero-name">Connectez-vous</div>
+    <div class="loyalty-card">
+      <div class="card-top">
+        <div class="card-brand">Lavage Auto<br>des Vérités · Lapalisse</div>
+        <div class="card-tier-badge">CLIENT FIDÈLE</div>
+      </div>
+      <div class="cashback-display">
+        <div class="cashback-row"><div class="cashback-currency">€</div><div class="cashback-val" id="card-cashback">3,60</div></div>
+        <div class="cashback-label-small">cashback disponible</div>
+      </div>
+      <div class="progress-bar"><div class="progress-fill" id="card-progress" style="width:100%"></div></div>
+      <div class="progress-meta"><span id="card-progress-left">✅ Utilisable maintenant !</span><span>Seuil : 2,00€</span></div>
+      <div class="cashback-rate-row"><span style="font-size:16px">💶</span><span class="cashback-rate-text">5% remboursé · variable selon programme</span><span class="cashback-rate-pct">5%</span></div>
+    </div>
+  </div>
+  <div class="home-content">
+    <div class="quick-actions">
+      <div class="qa-btn" onclick="goTo('screen-scan')"><div class="qa-icon">📍</div><div class="qa-label">Valider ma présence</div><div class="qa-sub">Sélectionner ma borne</div></div>
+      <div class="qa-btn" onclick="showTab('cashback')"><div class="qa-icon">💶</div><div class="qa-label">Mon cashback</div><div class="qa-sub" id="qa-cashback-sub">0,00€ disponible</div></div>
+      <div class="qa-btn" onclick="showTab('tickets')"><div class="qa-icon">🧾</div><div class="qa-label">Mes tickets</div><div class="qa-sub" id="qa-tickets-sub">0 ticket CB</div></div>
+      <div class="qa-btn" onclick="goTo('screen-panne')"><div class="qa-icon">🚨</div><div class="qa-label">Signaler panne</div><div class="qa-sub">Assistance rapide</div></div>
+    </div>
+    <div class="section-block">
+      <div class="section-head"><div class="section-title">💶 Utiliser mon cashback</div></div>
+      <button class="use-cashback-btn" id="use-btn" onclick="useCashback()">💶 Payer avec mon cashback (3,60€)</button>
+      <div class="cashback-info-box"><strong>Comment ça marche ?</strong>Dès 2,00€ — 1 jeton DJ3, 3 min HP, 8 min aspirateur, 4 min gonfleur ou 2 min borne jantes.</div>
+    </div>
+    <div class="section-block">
+      <div class="section-head"><div class="section-title">📋 Derniers passages</div><div class="section-link" onclick="showTab('tickets')">Voir tout</div></div>
+      <div class="history-list" id="home-history">
+        <div style="text-align:center;padding:20px;color:var(--muted);font-size:13px">Aucun passage enregistré pour l'instant</div>
+      </div>
+    </div>
+    <div class="section-block">
+      <div class="section-head"><div class="section-title">🎟️ Mes promos</div><div class="section-link" onclick="showTab('promos')">Voir tout</div></div>
+      <div class="promo-card" onclick="copyCode('BIENV10')"><div class="promo-icon">🏷️</div><div><div class="promo-code">BIENV10</div><div class="promo-desc">-10% sur prochain portique</div></div><div class="promo-badge-sm pb-active">Actif</div></div>
+    </div>
+  </div>
+  <nav class="bottom-nav">
+    <button class="nav-tab active" onclick="showTab('home')"><div class="nav-tab-icon">🏠</div><div class="nav-tab-label">Accueil</div></button>
+    <button class="nav-tab" onclick="showTab('cashback')"><div class="nav-tab-icon">💶</div><div class="nav-tab-label">Cashback</div></button>
+    <button class="nav-tab" onclick="showTab('tickets')"><div class="nav-tab-icon">🧾</div><div class="nav-tab-label">Tickets</div></button>
+    <button class="nav-tab" onclick="showTab('promos')"><div class="nav-tab-icon">🎟️</div><div class="nav-tab-label">Promos</div></button>
+    <button class="nav-tab" onclick="showTab('profile')"><div class="nav-tab-icon">👤</div><div class="nav-tab-label">Profil</div></button>
+  </nav>
+</div>
+
+<!-- ════ CASHBACK ════ -->
+<div class="screen" id="screen-cashback">
+  <div class="screen-header"><div class="screen-header-title">💶 Mon Cashback</div></div>
+  <div class="screen-body">
+    <div class="cashback-hero-inner">
+      <div style="font-size:13px;color:rgba(255,255,255,0.7);margin-bottom:8px;text-transform:uppercase;letter-spacing:1px">Cashback disponible</div>
+      <div class="cashback-big">€<span id="cashback-big">3,60</span></div>
+      <div style="font-size:13px;color:rgba(255,255,255,0.6);margin-top:8px">5% remboursé · variable selon programme</div>
+      <div style="background:rgba(255,255,255,0.15);border-radius:10px;padding:10px;margin-top:16px;font-size:13px">✅ Utilisable dès 2,00€ · Expire après 6 mois sans visite</div>
+    </div>
+    <div class="section-block">
+      <div class="section-title" style="margin-bottom:14px">📊 Barème cashback</div>
+      <table style="width:100%;border-collapse:collapse;font-size:13px">
+        <tr style="background:var(--bg)"><th style="padding:8px;text-align:left;color:var(--muted);font-size:11px;text-transform:uppercase">Programme</th><th style="padding:8px;text-align:center">Prix</th><th style="padding:8px;text-align:right">Cashback</th></tr>
+        <tr style="border-top:1px solid var(--border)"><td style="padding:10px 8px">🚗 ECO</td><td style="padding:10px 8px;text-align:center">6€</td><td style="padding:10px 8px;text-align:right"><span style="background:#fef3c7;color:#92400e;padding:2px 8px;border-radius:20px;font-weight:700;font-size:12px">3%</span></td></tr>
+        <tr style="border-top:1px solid var(--border)"><td style="padding:10px 8px">🚗 CONFORT</td><td style="padding:10px 8px;text-align:center">8€</td><td style="padding:10px 8px;text-align:right"><span style="background:#fed7aa;color:#9a3412;padding:2px 8px;border-radius:20px;font-weight:700;font-size:12px">4%</span></td></tr>
+        <tr style="border-top:1px solid var(--border)"><td style="padding:10px 8px">🚗 EXTRA</td><td style="padding:10px 8px;text-align:center">12€</td><td style="padding:10px 8px;text-align:right"><span style="background:#dcfce7;color:#15803d;padding:2px 8px;border-radius:20px;font-weight:700;font-size:12px">5%</span></td></tr>
+        <tr style="border-top:1px solid var(--border)"><td style="padding:10px 8px">🚗 LUXE</td><td style="padding:10px 8px;text-align:center">16€</td><td style="padding:10px 8px;text-align:right"><span style="background:#dbeafe;color:#1d4ed8;padding:2px 8px;border-radius:20px;font-weight:700;font-size:12px">7%</span></td></tr>
+        <tr style="border-top:1px solid var(--border)"><td style="padding:10px 8px">🚗 ULTRA BRILLANCE</td><td style="padding:10px 8px;text-align:center">20€</td><td style="padding:10px 8px;text-align:right"><span style="background:#fce7f3;color:#9d174d;padding:2px 8px;border-radius:20px;font-weight:700;font-size:12px">10%</span></td></tr>
+        <tr style="border-top:1px solid var(--border);background:#fffbeb"><td style="padding:10px 8px">🪙 50€ jetons DJ3</td><td style="padding:10px 8px;text-align:center">50€</td><td style="padding:10px 8px;text-align:right"><span style="background:#fce7f3;color:#9d174d;padding:2px 8px;border-radius:20px;font-weight:700;font-size:12px">10%</span></td></tr>
+      </table>
+    </div>
+    <div class="section-block">
+      <div class="section-title" style="margin-bottom:14px">Où utiliser mes 2€ ?</div>
+      <div style="display:flex;flex-direction:column;gap:8px">
+        <div class="where-item"><div class="where-item-icon">🪙</div><div><div class="where-item-title">Distributeur DJ3</div><div class="where-item-sub">1 jeton = 2,00€</div></div></div>
+        <div class="where-item"><div class="where-item-icon">💦</div><div><div class="where-item-title">Haute pression</div><div class="where-item-sub">3 minutes = 2,00€</div></div></div>
+        <div class="where-item"><div class="where-item-icon">🌀</div><div><div class="where-item-title">Aspirateur</div><div class="where-item-sub">8 minutes = 2,00€</div></div></div>
+        <div class="where-item"><div class="where-item-icon">💨</div><div><div class="where-item-title">Gonfleur</div><div class="where-item-sub">4 minutes = 2,00€</div></div></div>
+        <div class="where-item"><div class="where-item-icon">✨</div><div><div class="where-item-title">Borne jantes</div><div class="where-item-sub">2 minutes = 2,00€</div></div></div>
+      </div>
+    </div>
+    <button class="use-cashback-btn" id="use-btn-2" onclick="useCashback()">💶 Utiliser mon cashback</button>
+    <div class="section-block">
+      <div class="section-head"><div class="section-title">Historique cashback</div></div>
+      <div class="history-list" id="cashback-history">
+        <div style="text-align:center;padding:20px;color:var(--muted);font-size:13px">Aucune transaction enregistrée</div>
+      </div>
+    </div>
+  </div>
+  <nav class="bottom-nav">
+    <button class="nav-tab" onclick="showTab('home')"><div class="nav-tab-icon">🏠</div><div class="nav-tab-label">Accueil</div></button>
+    <button class="nav-tab active" onclick="showTab('cashback')"><div class="nav-tab-icon">💶</div><div class="nav-tab-label">Cashback</div></button>
+    <button class="nav-tab" onclick="showTab('tickets')"><div class="nav-tab-icon">🧾</div><div class="nav-tab-label">Tickets</div></button>
+    <button class="nav-tab" onclick="showTab('promos')"><div class="nav-tab-icon">🎟️</div><div class="nav-tab-label">Promos</div></button>
+    <button class="nav-tab" onclick="showTab('profile')"><div class="nav-tab-icon">👤</div><div class="nav-tab-label">Profil</div></button>
+  </nav>
+</div>
+
+<!-- ════ TICKETS ════ -->
+<div class="screen" id="screen-tickets">
+  <div class="screen-header"><div class="screen-header-title">🧾 Mes tickets</div><div style="font-size:12px;color:var(--muted)">Paiements CB</div></div>
+  <div class="screen-body" id="tickets-list-body"></div>
+  <nav class="bottom-nav">
+    <button class="nav-tab" onclick="showTab('home')"><div class="nav-tab-icon">🏠</div><div class="nav-tab-label">Accueil</div></button>
+    <button class="nav-tab" onclick="showTab('cashback')"><div class="nav-tab-icon">💶</div><div class="nav-tab-label">Cashback</div></button>
+    <button class="nav-tab active" onclick="showTab('tickets')"><div class="nav-tab-icon">🧾</div><div class="nav-tab-label">Tickets</div></button>
+    <button class="nav-tab" onclick="showTab('promos')"><div class="nav-tab-icon">🎟️</div><div class="nav-tab-label">Promos</div></button>
+    <button class="nav-tab" onclick="showTab('profile')"><div class="nav-tab-icon">👤</div><div class="nav-tab-label">Profil</div></button>
+  </nav>
+</div>
+
+<!-- ════ PROMOS ════ -->
+<div class="screen" id="screen-promos">
+  <div class="screen-header"><div class="screen-header-title">🎟️ Mes codes promo</div></div>
+  <div class="screen-body">
+    <div class="promo-card" onclick="copyCode('BIENV10')"><div class="promo-icon">🏷️</div><div style="flex:1"><div class="promo-code">BIENV10</div><div class="promo-desc">-10% sur prochain portique · valable 30j</div></div><div class="promo-badge-sm pb-active">Actif</div></div>
+    <div class="promo-card" onclick="copyCode('ETE2026')"><div class="promo-icon">☀️</div><div style="flex:1"><div class="promo-code">ETE2026</div><div class="promo-desc">Programme Intégral offert · 1 utilisation</div></div><div class="promo-badge-sm pb-expire">Expire 30/06</div></div>
+    <div class="promo-card" onclick="copyCode('VIP8')"><div class="promo-icon">⭐</div><div style="flex:1"><div class="promo-code">VIP8</div><div class="promo-desc">8% cashback sur prochain achat jetons</div></div><div class="promo-badge-sm pb-active">Actif</div></div>
+    <div class="promo-card"><div class="promo-icon">🎂</div><div style="flex:1"><div class="promo-code">ANNIV</div><div class="promo-desc">Cadeau anniversaire · 2€ offerts</div></div><div class="promo-badge-sm pb-used">Utilisé</div></div>
+    <div style="text-align:center;padding:20px;color:var(--muted);font-size:13px">Appuyez sur un code pour le copier 👆</div>
+  </div>
+  <nav class="bottom-nav">
+    <button class="nav-tab" onclick="showTab('home')"><div class="nav-tab-icon">🏠</div><div class="nav-tab-label">Accueil</div></button>
+    <button class="nav-tab" onclick="showTab('cashback')"><div class="nav-tab-icon">💶</div><div class="nav-tab-label">Cashback</div></button>
+    <button class="nav-tab" onclick="showTab('tickets')"><div class="nav-tab-icon">🧾</div><div class="nav-tab-label">Tickets</div></button>
+    <button class="nav-tab active" onclick="showTab('promos')"><div class="nav-tab-icon">🎟️</div><div class="nav-tab-label">Promos</div></button>
+    <button class="nav-tab" onclick="showTab('profile')"><div class="nav-tab-icon">👤</div><div class="nav-tab-label">Profil</div></button>
+  </nav>
+</div>
+
+<!-- ════ PROFIL ════ -->
+<div class="screen" id="screen-profile">
+  <div class="profile-hero">
+    <div class="profile-avatar" id="prof-av">?</div>
+    <div class="profile-name" id="prof-name">Mon profil</div>
+    <div class="profile-since" id="prof-since">Connectez-vous pour voir vos informations</div>
+  </div>
+  <div class="screen-body">
+    <div class="geo-notif-banner" onclick="toggleGeo(this)" style="margin-bottom:14px">
+      <div style="font-size:24px">📍</div>
+      <div><div class="geo-notif-title">Notifications de proximité</div><div class="geo-notif-sub">Offre automatique quand vous êtes près de la station</div></div>
+      <div class="geo-toggle on"></div>
+    </div>
+
+    <!-- Infos modifiables -->
+    <div class="section-block" style="margin-bottom:14px">
+      <div class="section-title" style="margin-bottom:14px">Mes informations</div>
+      <div class="form-group" style="margin-bottom:12px">
+        <label class="form-label">Téléphone</label>
+        <input class="form-input" type="tel" id="edit-tel" placeholder="0612345678" readonly style="background:#f0f0f0;color:#999">
+      </div>
+      <div class="form-group" style="margin-bottom:12px">
+        <label class="form-label">Email</label>
+        <input class="form-input" type="email" id="edit-email" placeholder="mon@email.fr">
+      </div>
+      <div class="form-group" style="margin-bottom:16px">
+        <label class="form-label">Date de naissance</label>
+        <input class="form-input" type="date" id="edit-ddn">
+      </div>
+      <button class="btn-brand" onclick="saveProfile()">💾 Sauvegarder</button>
+    </div>
+
+    <div class="profile-list">
+      <div class="profile-row" onclick="window.open('https://g.page/r/CVLZ7U-YsMqdEAE/review','_blank')">
+        <div class="profile-row-icon">⭐</div>
+        <div class="profile-row-label">Laisser un avis Google</div>
+        <div class="profile-row-val" style="color:var(--gold)">+0,50€ cashback</div>
+        <div class="profile-row-arrow">›</div>
+      </div>
+      <div class="profile-row" onclick="partager()">
+        <div class="profile-row-icon">🤝</div>
+        <div class="profile-row-label">Parrainer un ami</div>
+        <div class="profile-row-val" style="color:var(--teal)">+2€ chacun</div>
+        <div class="profile-row-arrow">›</div>
+      </div>
+      <div class="profile-row" onclick="goTo('screen-scan')">
+        <div class="profile-row-icon">📍</div>
+        <div class="profile-row-label">Valider ma présence</div>
+        <div class="profile-row-val" style="color:var(--brand)">Cumuler cashback</div>
+        <div class="profile-row-arrow">›</div>
+      </div>
+      <div class="profile-row" onclick="goTo('screen-panne')">
+        <div class="profile-row-icon">🚨</div>
+        <div class="profile-row-label">Signaler une panne</div>
+        <div class="profile-row-val" style="color:var(--red)">Assistance rapide</div>
+        <div class="profile-row-arrow">›</div>
+      </div>
+      <div class="profile-row" onclick="localStorage.removeItem('washcrm_tel');currentClientId=null;goTo('screen-welcome')">
+        <div class="profile-row-icon">🚪</div>
+        <div class="profile-row-label" style="color:var(--muted)">Se déconnecter</div>
+        <div class="profile-row-arrow">›</div>
+      </div>
+    </div>
+  </div>
+  <nav class="bottom-nav">
+    <button class="nav-tab" onclick="showTab('home')"><div class="nav-tab-icon">🏠</div><div class="nav-tab-label">Accueil</div></button>
+    <button class="nav-tab" onclick="showTab('cashback')"><div class="nav-tab-icon">💶</div><div class="nav-tab-label">Cashback</div></button>
+    <button class="nav-tab" onclick="showTab('tickets')"><div class="nav-tab-icon">🧾</div><div class="nav-tab-label">Tickets</div></button>
+    <button class="nav-tab" onclick="showTab('promos')"><div class="nav-tab-icon">🎟️</div><div class="nav-tab-label">Promos</div></button>
+    <button class="nav-tab active" onclick="showTab('profile')"><div class="nav-tab-icon">👤</div><div class="nav-tab-label">Profil</div></button>
+  </nav>
+</div>
+
+<!-- ════ VALIDER PRÉSENCE ════ -->
+<div class="screen" id="screen-scan" style="background:linear-gradient(160deg,#0a0f1e 0%,#0f2a6e 50%,#1a56db 100%);padding:56px 24px 100px;justify-content:flex-start;gap:24px">
+
+  <div style="text-align:center;position:relative;z-index:1">
+    <div style="font-family:'Clash Display',sans-serif;font-size:11px;font-weight:700;letter-spacing:3px;color:rgba(255,255,255,0.5);text-transform:uppercase;margin-bottom:10px">Lavage Auto des Vérités · Lapalisse</div>
+    <div style="font-family:'Clash Display',sans-serif;font-size:24px;font-weight:700;color:white;line-height:1.2;margin-bottom:6px">Valider ma présence</div>
+    <div style="font-size:13px;color:rgba(255,255,255,0.6);line-height:1.5">Choisissez votre borne pour enregistrer<br>votre présence et cumuler votre cashback</div>
+  </div>
+
+  <!-- Grille de bornes -->
+  <div style="position:relative;z-index:1;width:100%">
+    <div style="font-size:11px;color:rgba(255,255,255,0.5);text-transform:uppercase;letter-spacing:1.5px;margin-bottom:16px;text-align:center">Quelle borne utilisez-vous ?</div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:28px">
+      <div class="borne-opt selected" onclick="selectBorne(this,'Portique de lavage')" style="padding:32px 12px;border-radius:20px">
+        <span style="font-size:48px;display:block;margin-bottom:12px">🚗</span>
+        <div style="font-size:15px;color:white;font-weight:700">Portique<br>de lavage</div>
+        <div style="font-size:11px;color:rgba(255,255,255,0.5);margin-top:6px">Lavage automatique</div>
+      </div>
+      <div class="borne-opt" onclick="selectBorne(this,'Distributeur de jetons')" style="padding:32px 12px;border-radius:20px">
+        <span style="font-size:48px;display:block;margin-bottom:12px">🪙</span>
+        <div style="font-size:15px;color:white;font-weight:700">Distributeur<br>de jetons</div>
+        <div style="font-size:11px;color:rgba(255,255,255,0.5);margin-top:6px">Achat de jetons</div>
+      </div>
+    </div>
+
+    <button class="scan-btn" onclick="doScan()">📍 Valider ma présence</button>
+  </div>
+
+  <nav class="bottom-nav" style="background:rgba(10,15,30,0.85);border-top:1px solid rgba(255,255,255,0.1);backdrop-filter:blur(12px)">
+    <button class="nav-tab" onclick="showTab('home')"><div class="nav-tab-icon">🏠</div><div class="nav-tab-label" style="color:rgba(255,255,255,0.4)">Accueil</div></button>
+    <button class="nav-tab active" onclick="goTo('screen-scan')"><div class="nav-tab-icon">📍</div><div class="nav-tab-label" style="color:rgba(255,255,255,0.4)">Présence</div></button>
+    <button class="nav-tab" onclick="goTo('screen-panne')"><div class="nav-tab-icon">🚨</div><div class="nav-tab-label" style="color:rgba(255,255,255,0.4)">Panne</div></button>
+    <button class="nav-tab" onclick="showTab('profile')"><div class="nav-tab-icon">👤</div><div class="nav-tab-label" style="color:rgba(255,255,255,0.4)">Profil</div></button>
+  </nav>
+</div>
+
+<!-- Succès scan -->
+<div class="scan-success" id="scan-success">
+  <div class="ss-icon">✅</div>
+  <div class="ss-title">Présence confirmée !</div>
+  <div class="ss-sub">Votre cashback sera crédité automatiquement après votre paiement.</div>
+  <div class="ss-card">
+    <div class="ss-detail"><span>Borne</span><strong id="ss-borne">Portique de lavage</strong></div>
+    <div class="ss-detail"><span>Heure</span><strong id="ss-time">10:34</strong></div>
+    <div class="ss-detail"><span>Localisation</span><strong>✅ Confirmée</strong></div>
+    <div style="margin-top:16px;text-align:center"><div class="ss-timer" id="ss-timer">02:00</div><div class="ss-timer-label">Fenêtre de paiement</div></div>
+  </div>
+
+  <!-- Suggestion avis Google -->
+  <div style="background:rgba(255,255,255,0.15);border-radius:var(--radius);padding:16px;border:1px solid rgba(255,255,255,0.2);text-align:center;width:100%">
+    <div style="font-size:20px;margin-bottom:6px">⭐</div>
+    <div style="font-size:13px;font-weight:700;color:white;margin-bottom:4px">Gagnez 2% de cashback en plus !</div>
+    <div style="font-size:12px;color:rgba(255,255,255,0.75);margin-bottom:12px;line-height:1.5">Votre cashback sera crédité après votre lavage. Laissez-nous un avis Google et recevez un bonus supplémentaire !</div>
+    <button onclick="window.open('https://g.page/r/CVLZ7U-YsMqdEAE/review','_blank')" style="background:white;color:#00c47d;border:none;padding:10px 20px;border-radius:var(--radius-sm);font-family:'Cabinet Grotesk',sans-serif;font-size:13px;font-weight:700;cursor:pointer;width:100%">⭐ Laisser un avis Google</button>
+  </div>
+  <button class="ss-btn" onclick="closeScanSuccess()">Parfait, je paye maintenant !</button>
+</div>
+
+<!-- ════ SIGNALER PANNE ════ -->
+<div class="screen" id="screen-panne">
+  <div class="panne-header">
+    <div class="panne-header-title">🚨 Signaler un problème</div>
+    <div class="panne-header-sub">Décrivez le problème — nous interviendrons rapidement et vous serez compensé si nécessaire.</div>
+  </div>
+  <div style="padding:20px;padding-bottom:90px">
+    <div style="margin-bottom:16px"><label style="font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.8px;display:block;margin-bottom:8px">Quel appareil ?</label>
+    <div class="appareil-grid">
+      <div class="appareil-opt selected" onclick="selectAppareil(this)"><span class="appareil-opt-icon">🚗</span><div class="appareil-opt-name">Portique</div><div class="appareil-opt-num">TL12</div></div>
+      <div class="appareil-opt" onclick="selectAppareil(this)"><span class="appareil-opt-icon">🪙</span><div class="appareil-opt-name">Distributeur</div><div class="appareil-opt-num">DJ3</div></div>
+      <div class="appareil-opt" onclick="selectAppareil(this)"><span class="appareil-opt-icon">💦</span><div class="appareil-opt-name">Haute pression</div><div class="appareil-opt-num">Piste 1 ou 2</div></div>
+      <div class="appareil-opt" onclick="selectAppareil(this)"><span class="appareil-opt-icon">🌀</span><div class="appareil-opt-name">Aspirateur</div><div class="appareil-opt-num">1 ou 2</div></div>
+      <div class="appareil-opt" onclick="selectAppareil(this)"><span class="appareil-opt-icon">💨</span><div class="appareil-opt-name">Gonfleur</div></div>
+      <div class="appareil-opt" onclick="selectAppareil(this)"><span class="appareil-opt-icon">✨</span><div class="appareil-opt-name">Borne jantes</div></div>
+    </div></div>
+    <div style="margin-bottom:16px"><label style="font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.8px;display:block;margin-bottom:8px">Type de problème</label>
+    <div class="prob-list">
+      <div class="prob-opt selected" onclick="selectProb(this)"><div class="prob-icon">💳</div><div><div class="prob-label">Problème de paiement</div><div class="prob-sub">Carte débitée sans service</div></div></div>
+      <div class="prob-opt" onclick="selectProb(this)"><div class="prob-icon">🔧</div><div><div class="prob-label">Appareil en panne</div><div class="prob-sub">Ne démarre pas, s'arrête</div></div></div>
+      <div class="prob-opt" onclick="selectProb(this)"><div class="prob-icon">💧</div><div><div class="prob-label">Problème de produit</div><div class="prob-sub">Pas de mousse, pression insuffisante</div></div></div>
+      <div class="prob-opt" onclick="selectProb(this)"><div class="prob-icon">🧹</div><div><div class="prob-label">Station mal entretenue</div><div class="prob-sub">Sol glissant, déchets</div></div></div>
+      <div class="prob-opt" onclick="selectProb(this)"><div class="prob-icon">❓</div><div><div class="prob-label">Autre problème</div></div></div>
+    </div></div>
+    <div style="margin-bottom:16px"><label style="font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.8px;display:block;margin-bottom:6px">Description (optionnel)</label>
+    <textarea class="field-ta" placeholder="Décrivez ce qui s'est passé…"></textarea></div>
+    <div class="photo-zone" onclick="toast('📷 Ouverture caméra…')"><div style="font-size:32px;margin-bottom:8px">📷</div><div style="font-size:13px;color:var(--muted)">Ajouter une photo · Aide à diagnostiquer</div></div>
+    <div style="margin-bottom:16px"><label style="font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.8px;display:block;margin-bottom:6px">Votre téléphone</label><input class="form-input" type="tel" id="panne-tel" placeholder="06 12 34 56 78"></div>
+    <button class="report-btn" onclick="submitPanne()">🚨 Signaler le problème</button>
+  </div>
+  <nav class="bottom-nav">
+    <button class="nav-tab" onclick="showTab('home')"><div class="nav-tab-icon">🏠</div><div class="nav-tab-label">Accueil</div></button>
+    <button class="nav-tab" onclick="goTo('screen-scan')"><div class="nav-tab-icon">📍</div><div class="nav-tab-label">Scanner</div></button>
+    <button class="nav-tab active" onclick="goTo('screen-panne')"><div class="nav-tab-icon">🚨</div><div class="nav-tab-label">Panne</div></button>
+    <button class="nav-tab" onclick="showTab('profile')"><div class="nav-tab-icon">👤</div><div class="nav-tab-label">Profil</div></button>
+  </nav>
+</div>
+
+<!-- Confirmation panne -->
+<div class="panne-confirm" id="panne-confirm">
+  <div class="pc-card">
+    <div class="pc-icon">📬</div>
+    <div class="pc-title">Problème signalé !</div>
+    <div class="pc-sub">Le gérant a été notifié immédiatement. Vous serez contacté ou compensé rapidement.</div>
+    <div class="pc-ref" id="pc-ref">Réf : PANNE-2026-0422-001</div>
+    <button class="pc-btn" onclick="document.getElementById('panne-confirm').classList.remove('show');showTab('home')">Retour à l'accueil</button>
+  </div>
+</div>
+
+<!-- Ticket détail -->
+<div class="ticket-detail-overlay" id="ticket-overlay" onclick="closeTicketOverlay(event)">
+  <div class="ticket-detail">
+    <div class="receipt" id="receipt-content">
+      <div class="receipt-drag"></div>
+      <div class="receipt-header">
+        <div class="receipt-logo">Lavage Auto des Vérités</div>
+        <div class="receipt-station">3, impasse des Vérités — 03120 Lapalisse<br>SIRET : 880 897 863 00028 · TVA : FR90 880 897 863</div>
+      </div>
+      <div id="receipt-lines"></div>
+      <div class="receipt-total" id="receipt-total"></div>
+      <div class="receipt-cashback-box" id="receipt-cashback"></div>
+      <div class="receipt-solde" id="receipt-solde"></div>
+      <div class="receipt-legal">AMN LAVAGE · SAS · RCS Moulins<br>Siège : Les Fouranges — 03110 Brout-Vernet<br>Ce document tient lieu de reçu de paiement par carte bancaire.</div>
+    </div>
+    <div class="receipt-actions">
+      <button class="btn-dl" onclick="downloadPDF()">⬇ PDF</button>
+      <button class="btn-share" onclick="shareTicket()">↗ Partager</button>
+      <button class="btn-close-receipt" onclick="document.getElementById('ticket-overlay').classList.remove('open')">✕</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ════ DATA ════
+const CASHBACK_MIN = 2.00;
+let cashback = 0;
+let currentBorne = 'TL12 Portique';
+let timerInterval = null;
+let currentTicket = null;
+
+const tickets = [];
+
+// ════ NAVIGATION ════
+function goTo(id) {
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  window.scrollTo(0,0);
+}
+const tabMap = { home:'screen-home', cashback:'screen-cashback', tickets:'screen-tickets', promos:'screen-promos', profile:'screen-profile' };
+function showTab(tab) { goTo(tabMap[tab]); if(tab==='cashback'||tab==='home') refreshCashback(); }
+
+// ── Charger le profil dans l'interface ──
+function chargerProfil(data) {
+  const prenom = data.prenom || 'Client';
+  const nom    = data.nom    || '';
+  document.getElementById('hero-name').textContent  = 'Bonjour, ' + prenom + ' !';
+  document.getElementById('prof-name').textContent  = prenom + ' ' + nom;
+  document.getElementById('prof-av').textContent    = (prenom[0]||'') + (nom[0]||'');
+  document.getElementById('prof-since').textContent = 'Membre depuis ' + new Date(data.created_at).toLocaleDateString('fr-FR', {month:'long', year:'numeric'}) + ' · ' + (data.nb_lavages||0) + ' lavages';
+  document.getElementById('edit-tel').value   = data.telephone || '';
+  document.getElementById('edit-email').value = data.email || '';
+  document.getElementById('edit-ddn').value   = data.date_naissance ? data.date_naissance.slice(0,10) : '';
+}
+
+// ── Recharger le cashback depuis Supabase ──
+async function refreshCashback() {
+  if (!currentClientId) return;
+  const { data } = await sb.from('clients').select('cashback_solde, nb_lavages').eq('id', currentClientId).single();
+  if (data) {
+    cashback = data.cashback_solde || 0;
+    updateCashbackUI();
+  }
+}
+
+// ── Sauvegarder le profil ──
+async function saveProfile() {
+  if (!currentClientId) { toast('⚠️ Connectez-vous d\'abord'); return; }
+  const email = document.getElementById('edit-email').value.trim();
+  const ddn   = document.getElementById('edit-ddn').value;
+  const { error } = await sb.from('clients').update({
+    email: email || null,
+    date_naissance: ddn || null,
+  }).eq('id', currentClientId);
+  if (error) { toast('❌ Erreur sauvegarde'); return; }
+  toast('✅ Profil mis à jour !');
+}
+
+// ── Parrainer un ami ──
+function partager() {
+  const url = 'https://washcrm-production.up.railway.app/client';
+  const msg = '🚗 Rejoins le programme fidélité du Lavage Auto des Vérités à Lapalisse ! Gagne du cashback sur chaque lavage 💶 → ' + url;
+  if (navigator.share) {
+    navigator.share({ title: 'Lavage Auto des Vérités', text: msg, url });
+  } else {
+    navigator.clipboard?.writeText(msg);
+    toast('📤 Lien copié ! Partagez-le à vos amis');
+  }
+}
+async function autoLogin() {
+  const tel = localStorage.getItem('washcrm_tel');
+  if (!tel) return; // Pas de session sauvegardée
+
+  const { data, error } = await sb.from('clients').select('*').eq('telephone', tel).maybeSingle();
+  if (error || !data) { localStorage.removeItem('washcrm_tel'); return; }
+
+  currentClientId = data.id;
+  cashback = data.cashback_solde || 0;
+  chargerProfil(data);
+  updateCashbackUI();
+  await loadClientTickets();
+  goTo('screen-home');
+  // Pré-remplir le téléphone dans le formulaire panne
+  const panneTel = document.getElementById('panne-tel');
+  if (panneTel) panneTel.value = data.telephone || '';
+}
+async function loginClient() {
+  const telRaw = document.getElementById('login-tel').value.trim();
+  if (!telRaw) { toast('⚠️ Entrez votre numéro de téléphone'); return; }
+
+  // Normaliser — retirer tous les espaces, tirets, points
+  const tel = telRaw.replace(/[\s\-\.\(\)]/g, '');
+
+  toast('⏳ Connexion en cours…');
+
+  const { data, error } = await sb.from('clients').select('*')
+    .eq('telephone', tel)
+    .maybeSingle();
+
+  if (error) { console.error('Erreur connexion:', error); toast('❌ Erreur de connexion'); return; }
+  if (!data) { toast('❌ Numéro introuvable — Créez votre compte !'); setTimeout(() => goTo('screen-register'), 2000); return; }
+
+  currentClientId = data.id;
+  cashback = data.cashback_solde || 0;
+  localStorage.setItem('washcrm_tel', tel);
+  chargerProfil(data);
+  updateCashbackUI();
+  await loadClientTickets();
+  goTo('screen-home');
+  toast('👋 Bon retour ' + (data.prenom||'') + ' !');
+  demanderNotifications();
+  // Pré-remplir le téléphone dans le formulaire panne
+  const panneTel = document.getElementById('panne-tel');
+  if (panneTel) panneTel.value = data.telephone || '';
+}
+function register() {
+  const prenom = document.getElementById('inp-prenom').value||'Marie';
+  const nom    = document.getElementById('inp-nom').value||'Dupont';
+  document.getElementById('hero-name').textContent = 'Bonjour, '+prenom+' !';
+  document.getElementById('prof-name').textContent = prenom+' '+nom;
+  document.getElementById('prof-av').textContent   = (prenom[0]||'')+(nom[0]||'');
+  cashback=0; updateCashbackUI();
+  goTo('screen-home');
+  setTimeout(()=>toast('🎉 Bienvenue ! 5% cashback sur chaque lavage 💶'),400);
+}
+
+// ════ CASHBACK ════
+function updateCashbackUI() {
+  const pct = Math.min((cashback/CASHBACK_MIN)*100,100);
+  const fmt = cashback.toFixed(2).replace('.',',');
+  document.getElementById('card-cashback').textContent = fmt;
+  document.getElementById('cashback-big').textContent  = fmt;
+  document.getElementById('qa-cashback-sub').textContent = fmt+'€ disponible';
+  document.getElementById('card-progress').style.width = pct+'%';
+  const ok = cashback >= CASHBACK_MIN;
+  [document.getElementById('use-btn'),document.getElementById('use-btn-2')].forEach(b=>{
+    b.disabled = !ok;
+    b.textContent = ok ? '💶 Payer avec mon cashback ('+fmt+'€)' : 'Encore '+(CASHBACK_MIN-cashback).toFixed(2).replace('.',',')+'€ pour utiliser';
+  });
+  document.getElementById('card-progress-left').textContent = ok ? '✅ Utilisable maintenant !' : 'Encore '+(CASHBACK_MIN-cashback).toFixed(2).replace('.',',')+'€';
+}
+function useCashback() {
+  if(cashback<CASHBACK_MIN) return;
+  cashback=Math.max(0,cashback-CASHBACK_MIN); updateCashbackUI();
+  toast('✅ 2,00€ utilisés ! Présentez votre QR code à la borne.');
+}
+
+// ════ SCAN ════
+function selectBorne(el,borne) { document.querySelectorAll('.borne-opt').forEach(o=>o.classList.remove('selected')); el.classList.add('selected'); currentBorne=borne; }
+function doScan() {
+  if (!currentClientId) {
+    toast('⚠️ Connectez-vous d\'abord pour valider votre présence !');
+    setTimeout(() => goTo('screen-login'), 1500);
+    return;
+  }
+  if(navigator.geolocation){navigator.geolocation.getCurrentPosition(()=>confirmScan(),()=>confirmScan());}else{confirmScan();}
+}
+function confirmScan() {
+  const now = new Date();
+  document.getElementById('ss-borne').textContent = currentBorne;
+  document.getElementById('ss-time').textContent  = now.toLocaleTimeString('fr-FR', {hour:'2-digit',minute:'2-digit'});
+  document.getElementById('scan-success').classList.add('show');
+  startTimer(120);
+
+  // Enregistrer le scan dans Supabase
+  if (currentClientId) {
+    sb.from('scans').insert({
+      client_id: currentClientId,
+      borne: currentBorne,
+      heure_scan: now.toISOString(),
+      latitude: null,
+      longitude: null,
+    }).then(({ error }) => {
+      if (error) console.error('Erreur scan:', error);
+    });
+  }
+}
+function startTimer(seconds) {
+  if(timerInterval)clearInterval(timerInterval); let rem=seconds; updateTimer(rem);
+  timerInterval=setInterval(()=>{rem--;updateTimer(rem);if(rem<=0){clearInterval(timerInterval);closeScanSuccess();toast('⏰ Fenêtre expirée');}},1000);
+}
+function updateTimer(s){const m=Math.floor(s/60).toString().padStart(2,'0');const sec=(s%60).toString().padStart(2,'0');document.getElementById('ss-timer').textContent=m+':'+sec;}
+function closeScanSuccess(){document.getElementById('scan-success').classList.remove('show');if(timerInterval)clearInterval(timerInterval);toast('✅ Présence enregistrée ! Cashback crédité après paiement.');}
+
+// ════ PANNE ════
+function selectAppareil(el){document.querySelectorAll('.appareil-opt').forEach(o=>o.classList.remove('selected'));el.classList.add('selected');}
+function selectProb(el){document.querySelectorAll('.prob-opt').forEach(o=>o.classList.remove('selected'));el.classList.add('selected');}
+function submitPanne(){
+  const ref='PANNE-'+new Date().toISOString().slice(0,10).replace(/-/g,'')+'-'+Math.floor(Math.random()*900+100);
+  document.getElementById('pc-ref').textContent='Réf : '+ref;
+  document.getElementById('panne-confirm').classList.add('show');
+}
+
+// ════ TICKETS ════
+function renderTickets() {
+  document.getElementById('tickets-list-body').innerHTML = tickets.map(t=>`
+    <div class="ticket-card" onclick="openTicket('${t.id}')">
+      <div class="ticket-card-header">
+        <div class="ticket-icon ${t.type}">${t.icon}</div>
+        <div class="ticket-info"><div class="ticket-prog">${t.programme}</div><div class="ticket-date-txt">${t.datetime}</div></div>
+        <div><div class="ticket-price">${t.ttc.toFixed(2).replace('.',',')}€</div><div class="ticket-cashback">+${t.cashback.toFixed(2).replace('.',',')}€ cashback</div></div>
+      </div>
+      <div class="ticket-footer">
+        <div class="ticket-ref">${t.ref}</div>
+        <div><button class="tac-btn" onclick="event.stopPropagation();openTicket('${t.id}')">👁 Voir</button><button class="tac-btn" onclick="event.stopPropagation();downloadTicketPDF('${t.id}')">⬇ PDF</button></div>
+      </div>
+    </div>
+  `).join('');
+}
+function openTicket(id) {
+  currentTicket=tickets.find(t=>t.id===id); if(!currentTicket)return; const t=currentTicket;
+  document.getElementById('receipt-lines').innerHTML=`
+    <div class="receipt-line"><span class="rl-label">Date & heure</span><span class="rl-value">${t.datetime}</span></div>
+    <div class="receipt-line"><span class="rl-label">Appareil</span><span class="rl-value">${t.appareil}</span></div>
+    <div class="receipt-line"><span class="rl-label">Programme</span><span class="rl-value">${t.programme}</span></div>
+    <div class="receipt-line"><span class="rl-label">Paiement</span><span class="rl-value">${t.mode}</span></div>
+    <div class="receipt-line"><span class="rl-label">N° transaction</span><span class="rl-value mono">${t.ref}</span></div>`;
+  document.getElementById('receipt-total').innerHTML=`
+    <div class="receipt-total-line"><span>Montant HT</span><span>${t.ht.toFixed(2).replace('.',',')}€</span></div>
+    <div class="receipt-total-line"><span>TVA 20%</span><span>${t.tva.toFixed(2).replace('.',',')}€</span></div>
+    <div class="receipt-total-line main"><span>Total TTC</span><span>${t.ttc.toFixed(2).replace('.',',')}€</span></div>`;
+  document.getElementById('receipt-cashback').innerHTML=`<div style="font-size:22px">💶</div><div class="rc-label"><strong>Cashback gagné</strong>${Math.round((t.cashback/t.ttc)*100)}% de ${t.ttc.toFixed(2).replace('.',',')}€</div><div class="rc-amount">+${t.cashback.toFixed(2).replace('.',',')}€</div>`;
+  document.getElementById('receipt-solde').innerHTML=`<span style="font-size:12px;color:var(--brand)">Solde cashback après ce passage</span><span style="font-family:'Clash Display',sans-serif;font-size:20px;color:var(--brand)">${t.soldeCashback.toFixed(2).replace('.',',')}€</span>`;
+  document.getElementById('ticket-overlay').classList.add('open');
+}
+function closeTicketOverlay(e){if(e.target===document.getElementById('ticket-overlay'))document.getElementById('ticket-overlay').classList.remove('open');}
+function downloadPDF(){if(currentTicket)generatePDF(currentTicket);}
+function downloadTicketPDF(id){const t=tickets.find(t=>t.id===id);if(t)generatePDF(t);}
+function generatePDF(t) {
+  const {jsPDF}=window.jspdf; const doc=new jsPDF({unit:'mm',format:[80,170]});
+  let y=10;const cx=40,lm=8,rm=72;
+  doc.setFont('helvetica','bold');doc.setFontSize(12);doc.text('Lavage Auto des Vérités',cx,y,{align:'center'});y+=6;
+  doc.setFont('helvetica','normal');doc.setFontSize(7);doc.text('3, impasse des Vérités — 03120 Lapalisse',cx,y,{align:'center'});y+=4;
+  doc.text('SIRET : 880 897 863 00028 · TVA : FR90 880 897 863',cx,y,{align:'center'});y+=6;
+  doc.setLineDash([1,1]);doc.line(lm,y,rm,y);y+=6;doc.setLineDash([]);
+  doc.setFontSize(8);
+  [['Date',t.datetime],['Appareil',t.appareil],['Programme',t.programme],['Paiement',t.mode],['N° transaction',t.ref]].forEach(([l,v])=>{
+    doc.setFont('helvetica','normal');doc.setTextColor(120);doc.text(l,lm,y);
+    doc.setFont('helvetica','bold');doc.setTextColor(0);doc.text(v,rm,y,{align:'right'});y+=5;
+  });
+  y+=2;doc.setLineDash([1,1]);doc.line(lm,y,rm,y);y+=6;doc.setLineDash([]);
+  [['Montant HT',t.ht.toFixed(2)+' €'],['TVA 20%',t.tva.toFixed(2)+' €']].forEach(([l,v])=>{
+    doc.setFont('helvetica','normal');doc.setTextColor(100);doc.text(l,lm,y);doc.setTextColor(0);doc.text(v,rm,y,{align:'right'});y+=5;
+  });
+  doc.setFontSize(11);doc.setFont('helvetica','bold');doc.text('TOTAL TTC',lm,y);doc.text(t.ttc.toFixed(2)+' €',rm,y,{align:'right'});y+=8;
+  doc.setTextColor(150);doc.setFontSize(6);doc.setFont('helvetica','normal');
+  ['AMN LAVAGE · SAS · RCS Moulins','Siège : Les Fouranges — 03110 Brout-Vernet','Ce document tient lieu de reçu de paiement.'].forEach(l=>{doc.text(l,cx,y,{align:'center'});y+=4;});
+  doc.save('ticket-'+t.ref+'.pdf');toast('⬇ Ticket PDF téléchargé !');
+}
+function shareTicket() {
+  if(!currentTicket)return;const t=currentTicket;
+  const text=`🧾 Lavage Auto des Vérités\n${t.datetime}\n${t.programme}\nTotal : ${t.ttc.toFixed(2)}€\nRéf : ${t.ref}`;
+  if(navigator.share){navigator.share({title:'Mon ticket',text});}else{navigator.clipboard?.writeText(text);toast('📋 Ticket copié !');}
+}
+
+// ════ AUTRES ════
+function copyCode(code){navigator.clipboard?.writeText(code).catch(()=>{});toast('✅ Code '+code+' copié !');}
+function toggleGeo(banner){const t=banner.querySelector('.geo-toggle');t.classList.toggle('on');toast(t.classList.contains('on')?'📍 Notifications activées':'🔕 Notifications désactivées');}
+function toast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),3000);}
+
+// ════ SUPABASE ════
+const SUPABASE_URL = 'https://hpucsjjbbklqqvpljbgr.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhwdWNzampiYmtscXF2cGxqYmdyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzcyMTk4MDUsImV4cCI6MjA5Mjc5NTgwNX0.3cFAvaL0TIXzO1N3lu59hLrf_8td5ADC5a0gGbXKmgY';
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+let currentClientId = null;
+
+// ── Inscription réelle ──
+const _registerOriginal = register;
+register = async function() {
+  const prenom = document.getElementById('inp-prenom').value.trim() || 'Marie';
+  const nom    = document.getElementById('inp-nom').value.trim()    || 'Dupont';
+  const tel = document.querySelector('#screen-register input[type="tel"]').value.trim().replace(/[\s\-\.\(\)]/g, '');
+
+  if (!tel) { toast('⚠️ Renseignez votre numéro de téléphone'); return; }
+
+  // Vérifier si déjà inscrit
+  const { data: existing } = await sb.from('clients').select('id,cashback_solde,nb_lavages,niveau').eq('telephone', tel).single();
+
+  if (existing) {
+    // Client existant — charger ses données
+    currentClientId = existing.id;
+    cashback = existing.cashback_solde || 0;
+    document.getElementById('hero-name').textContent = 'Bonjour, ' + prenom + ' !';
+    document.getElementById('prof-name').textContent = prenom + ' ' + nom;
+    document.getElementById('prof-av').textContent   = (prenom[0]||'') + (nom[0]||'');
+    updateCashbackUI();
+    await loadClientTickets();
+    goTo('screen-home');
+    toast('👋 Content de vous revoir !');
+    return;
+  }
+
+  // Nouveau client
+  const { data, error } = await sb.from('clients').insert({
+    prenom, nom, telephone: tel,
+    cashback_solde: 0, nb_lavages: 0, niveau: 'bronze', actif: true,
+  }).select().single();
+
+  if (error) { console.error(error); toast('❌ Erreur inscription'); return; }
+
+  currentClientId = data.id;
+  cashback = 0;
+  document.getElementById('hero-name').textContent = 'Bonjour, ' + prenom + ' !';
+  document.getElementById('prof-name').textContent = prenom + ' ' + nom;
+  document.getElementById('prof-av').textContent   = (prenom[0]||'') + (nom[0]||'');
+  updateCashbackUI();
+  goTo('screen-home');
+  toast('🎉 Bienvenue ' + prenom + ' ! 5% cashback sur chaque lavage 💶');
+};
+
+// ── Charger tickets du client ──
+async function loadClientTickets() {
+  if (!currentClientId) return;
+  const { data, error } = await sb.from('transactions')
+    .select('*')
+    .eq('client_id', currentClientId)
+    .order('date_transaction', { ascending: false })
+    .limit(20);
+  if (error || !data || !data.length) {
+    document.getElementById('home-history').innerHTML = '<div style="text-align:center;padding:20px;color:var(--muted);font-size:13px">Aucun passage enregistré pour l\'instant</div>';
+    document.getElementById('cashback-history').innerHTML = '<div style="text-align:center;padding:20px;color:var(--muted);font-size:13px">Aucune transaction enregistrée</div>';
+    renderTickets();
+    return;
+  }
+
+  // Historique accueil (3 derniers)
+  document.getElementById('home-history').innerHTML = data.slice(0,3).map(t => `
+    <div class="history-row">
+      <div class="h-icon wash">${t.produit==='Lavage'?'🚗':'🪙'}</div>
+      <div><div class="h-title">${t.produit} · ${t.montant}€</div><div class="h-date">${new Date(t.date_transaction).toLocaleDateString('fr-FR')}</div></div>
+      <div class="h-pts plus">+${(t.cashback_gagne||0).toFixed(2).replace('.',',')}€</div>
+    </div>
+  `).join('');
+
+  // Historique cashback
+  document.getElementById('cashback-history').innerHTML = data.map(t => `
+    <div class="history-row">
+      <div class="h-icon wash">${t.produit==='Lavage'?'🚗':'🪙'}</div>
+      <div><div class="h-title">${t.produit} · Prog.${t.programme} · ${t.montant}€</div><div class="h-date">${new Date(t.date_transaction).toLocaleDateString('fr-FR')}</div></div>
+      <div class="h-pts plus">+${(t.cashback_gagne||0).toFixed(2).replace('.',',')}€</div>
+    </div>
+  `).join('');
+
+  // Tickets
+  const mapped = data.map(t => ({
+    id: t.id,
+    icon: t.produit === 'Lavage' ? '🚗' : '🪙',
+    type: t.produit === 'Lavage' ? 'portique' : 'jetons',
+    programme: t.produit + ' · Prog.' + t.programme,
+    appareil: t.borne || 'Borne',
+    datetime: new Date(t.date_transaction).toLocaleDateString('fr-FR') + ' à ' + (t.heure || '—'),
+    ht: +(t.montant / 1.2).toFixed(2),
+    tva: +(t.montant - t.montant / 1.2).toFixed(2),
+    ttc: t.montant,
+    cashback: t.cashback_gagne || 0,
+    soldeCashback: cashback,
+    ref: t.ref_lavaccess || t.id.slice(0,12).toUpperCase(),
+    mode: t.paiement === 'CB' ? 'Carte bancaire (CB)' : t.paiement,
+  }));
+  tickets.length = 0;
+  mapped.forEach(t => tickets.push(t));
+  document.getElementById('qa-tickets-sub').textContent = tickets.length + ' ticket' + (tickets.length > 1 ? 's' : '') + ' CB';
+  renderTickets();
+}
+
+// ── Signaler panne réelle ──
+const _submitPanneOriginal = submitPanne;
+submitPanne = async function() {
+  const appareil = document.querySelector('.appareil-opt.selected .appareil-opt-name')?.textContent || 'Non précisé';
+  const type     = document.querySelector('.prob-opt.selected .prob-label')?.textContent || 'Non précisé';
+  const desc     = document.querySelector('#screen-panne .field-ta')?.value || '';
+  const tel      = document.getElementById('panne-tel')?.value || '';
+  const ref      = 'PANNE-' + new Date().toISOString().slice(0,10).replace(/-/g,'') + '-' + Math.floor(Math.random()*900+100);
+
+  const { error } = await sb.from('pannes').insert({
+    client_id: currentClientId || null,
+    client_telephone: tel,
+    appareil, type_probleme: type, description: desc,
+    statut: 'new', ref,
+  });
+
+  document.getElementById('pc-ref').textContent = 'Réf : ' + ref;
+  document.getElementById('panne-confirm').classList.add('show');
+  if (!error) toast('🚨 Panne signalée et enregistrée !');
+};
+
+// ── Utiliser cashback réel ──
+const _useCashbackOriginal = useCashback;
+useCashback = async function() {
+  if (cashback < CASHBACK_MIN) return;
+  if (currentClientId) {
+    const newSolde = Math.max(0, cashback - CASHBACK_MIN);
+    await sb.from('clients').update({ cashback_solde: newSolde }).eq('id', currentClientId);
+    await sb.from('cashback_log').insert({
+      client_id: currentClientId, montant: -CASHBACK_MIN,
+      type: 'debit', description: 'Utilisation cashback à la borne',
+    });
+    cashback = newSolde;
+  } else {
+    cashback = Math.max(0, cashback - CASHBACK_MIN);
+  }
+  updateCashbackUI();
+  toast('✅ 2,00€ utilisés ! Présentez votre QR code à la borne.');
+};
+
+// ════ INIT ════
+updateCashbackUI();
+renderTickets();
+
+// ── Connexion automatique au démarrage ──
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('/sw.js')
+    .then(reg => {
+      setInterval(checkProximite, 120000);
+      checkProximite();
+    })
+    .catch(err => console.log('SW erreur :', err));
+}
+
+// Tenter connexion automatique
+(async () => { await autoLogin(); })();
+
+// ── Demander permission notifications ──
+async function demanderNotifications() {
+  if (!('Notification' in window)) return;
+  if (Notification.permission === 'default') {
+    const perm = await Notification.requestPermission();
+    if (perm === 'granted') toast('🔔 Notifications activées !');
+  }
+}
+
+// ── Vérifier proximité station ──
+const STATION_LAT = 46.2497;
+const STATION_LNG = 3.6365;
+const RAYON_METRES = 500;
+
+function checkProximite() {
+  if (!currentClientId) return;
+  if (!navigator.geolocation) return;
+  if (Notification.permission !== 'granted') return;
+
+  navigator.geolocation.getCurrentPosition(pos => {
+    const { latitude, longitude } = pos.coords;
+    // Envoyer au service worker pour vérification
+    if (navigator.serviceWorker.controller) {
+      navigator.serviceWorker.controller.postMessage({
+        type: 'CHECK_PROXIMITY',
+        lat: latitude,
+        lng: longitude,
+        cashback: cashback,
+      });
+    }
+  }, () => {}, { enableHighAccuracy: false, timeout: 10000 });
+}
+
+// Demander notifications après connexion (appelé depuis loginClient et register)
+
+</script>
+</body>
+</html>
